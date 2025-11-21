@@ -12,7 +12,7 @@ let defaultZipCode = '30144';
  */
 async function loadZipCodeMaster() {
     try {
-        const response = await fetch('../data/zip-codes-master.json');
+        const response = await fetch('./data/zip-codes-master.json');
         zipCodeMaster = await response.json();
         
         // Build flat list of valid zip codes

@@ -1,0 +1,11 @@
+[build]
+  # Copy data files into mvp, then publish mvp as root
+  command = "node build.js"
+  publish = "mvp"
+
+# Redirect root to index.html (SPA support)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

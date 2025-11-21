@@ -26,7 +26,7 @@ async function init() {
 // Load item catalog
 async function loadCatalog() {
     try {
-        const response = await fetch('../data/items-catalog.json');
+        const response = await fetch('./data/items-catalog.json');
         const data = await response.json();
         itemCatalog = data.items;
         console.log(`Loaded ${itemCatalog.length} items from catalog`);
