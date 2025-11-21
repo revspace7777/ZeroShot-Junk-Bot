@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ZeroShot Junk Bot - Quote Calculator for Marietta & Kennesaw, GA. Fully offline pricing calculator.">
+    <meta name="author" content="ZeroShot Junk Bot">
+    <title>ZeroShot Junk Bot - Quote Calculator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ZeroShot Junk Bot</h1>
+            <p class="subtitle">Quote Calculator - Georgia & Florida</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Zip Code Input -->
+            <section class="zip-section">
+                <label for="zipCode">Zip Code (GA/FL):</label>
+                <input type="text" id="zipCode" placeholder="30144" value="30144" maxlength="5">
+                <button id="updateZip">Update</button>
+                <span id="zipStatus" class="status"></span>
+                <span id="cityName" class="city-name"></span>
+            </section>
+
+            <!-- Item Search & Selection -->
+            <section class="item-selection">
+                <h2>Add Items</h2>
+                <div class="search-box">
+                    <input type="text" id="itemSearch" placeholder="Search items...">
+                </div>
+                <div id="itemList" class="item-list"></div>
+            </section>
+
+            <!-- Quote Items -->
+            <section class="quote-section">
+                <h2>Your Quote</h2>
+                <div id="quoteItems" class="quote-items">
+                    <p class="empty-message">No items added yet. Search and add items above.</p>
+                </div>
+                <div id="quoteSummary" class="quote-summary" style="display: none;">
+                    <div class="summary-line">
+                        <span>Item Subtotal:</span>
+                        <span id="itemSubtotal">$0.00</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>Base Price:</span>
+                        <span id="basePrice">$0.00</span>
+                    </div>
+                    <div class="summary-line">
+                        <span>Order Subtotal:</span>
+                        <span id="orderSubtotal">$0.00</span>
+                    </div>
+                    <div class="summary-line minimum" id="minimumLine" style="display: none;">
+                        <span>Minimum Charge Applied:</span>
+                        <span id="minimumPrice">$75.00</span>
+                    </div>
+                    <div class="summary-line total">
+                        <span><strong>Total:</strong></span>
+                        <span id="totalPrice"><strong>$0.00</strong></span>
+                    </div>
+                </div>
+                <div id="loadingIndicator" class="loading" style="display: none;">
+                    Calculating price...
+                </div>
+                <div id="errorMessage" class="error" style="display: none;"></div>
+            </section>
+        </div>
+    </div>
+
+    <script src="../data/pricing-logic.js"></script>
+    <script src="zip-codes.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,129 @@
+{
+  "metadata": {
+    "extractedDate": "2025-11-18T02:42:00.000Z",
+    "source": "ZeroShot Junk Bot - Local pricing rules",
+    "apiEndpoint": null,
+    "query": "PricingDetails"
+  },
+  "pricingFormula": {
+    "description": "Total price calculation based on items and zip code",
+    "formula": "total = max(orderSubtotal, minimumPrice) + tax",
+    "orderSubtotal": "sum(itemPickupPrices) + basePrice",
+    "components": {
+      "itemPickupPrices": "Sum of pickupUnitPrice * quantity for each item",
+      "basePrice": "Varies by zip code (see zipCodeModifiers)",
+      "minimumPrice": 75,
+      "tax": "Applied in some zip codes (e.g., NYC, Dallas)"
+    }
+  },
+  "minimumCharge": {
+    "amount": 75,
+    "currency": "USD",
+    "description": "Minimum charge applied when orderSubtotal < 75"
+  },
+  "zipCodeModifiers": {
+    "description": "System configured for Marietta & Kennesaw, GA only. Base price varies by zip code. Item prices may also vary.",
+    "serviceArea": "Marietta & Kennesaw, Georgia",
+    "validZipCodes": {
+      "marietta": ["30006", "30007", "30008", "30060", "30061", "30062", "30063", "30064", "30065", "30066", "30067", "30068", "30069", "30090"],
+      "kennesaw": ["30144", "30152", "30156", "30160"]
+    },
+    "testedZips": {
+      "30144": {
+        "city": "Kennesaw, GA",
+        "basePrice": 59,
+        "itemPriceExample": {
+          "itemId": "7947",
+          "itemName": "Mattress - Queen",
+          "pickupUnitPrice": 35
+        },
+        "totalExample": 94,
+        "taxApplied": false,
+        "note": "Kennesaw, GA - Default zip code with cached prices"
+      }
+    },
+    "estimatedBasePrices": {
+      "kennesaw": {
+        "note": "All Kennesaw zip codes (30144, 30152, 30156, 30160) estimated at ~$59 base price",
+        "basePrice": 59
+      },
+      "marietta": {
+        "note": "Marietta zip codes (30006-30090) estimated at ~$59-64 base price (nearby area)",
+        "basePriceRange": "59-64"
+      }
+    },
+    "pattern": "Base price is consistent across Marietta/Kennesaw area (~$59). Item prices may vary slightly by zip code. Tax typically not applied in Georgia."
+  },
+  "volumeTiers": {
+    "description": "Volume is not directly in API but estimated from item categories",
+    "estimatedTiers": {
+      "small": {
+        "volume": 0.25,
+        "examples": ["Boxes", "Bags", "Small items", "Cubic yard items"]
+      },
+      "medium": {
+        "volume": 0.5,
+        "examples": ["Dresser", "Desk", "Table", "Chair"]
+      },
+      "large": {
+        "volume": 1.0,
+        "examples": ["Mattress", "Couch", "Sofa", "Sectional", "Recliner"]
+      },
+      "extraLarge": {
+        "volume": 1.5,
+        "examples": ["Appliances", "Refrigerator", "Washer", "Dryer"]
+      }
+    },
+    "note": "Volume calculation is estimated. Actual volume may be calculated server-side based on item dimensions or other factors not exposed in the API."
+  },
+  "testResults": {
+    "zip30144": {
+      "1xMattressQueen": {
+        "items": [{"id": "7947", "quantity": 1}],
+        "itemSubtotal": 35,
+        "basePrice": 59,
+        "orderSubtotal": 94,
+        "minimumPriceApplied": true,
+        "total": 94
+      },
+      "2xMattressQueen": {
+        "items": [{"id": "7947", "quantity": 2}],
+        "itemSubtotal": 70,
+        "basePrice": 59,
+        "orderSubtotal": 129,
+        "minimumPriceApplied": true,
+        "total": 129
+      },
+      "3xMattressQueen": {
+        "items": [{"id": "7947", "quantity": 3}],
+        "itemSubtotal": 105,
+        "basePrice": 59,
+        "orderSubtotal": 164,
+        "minimumPriceApplied": true,
+        "total": 164
+      },
+      "1xMattress1xBoxSpring": {
+        "items": [{"id": "7947", "quantity": 1}, {"id": "7948", "quantity": 1}],
+        "itemSubtotal": 60,
+        "basePrice": 59,
+        "orderSubtotal": 119,
+        "minimumPriceApplied": true,
+        "total": 119
+      }
+    }
+  },
+  "graphqlQuery": {
+    "operationName": "PricingDetails",
+    "query": "query PricingDetails($inputs: PricingDetailsInputs!) { pricingDetails(inputs: $inputs) { total basePrice minimumPrice minimumPriceApplied orderSubtotal items { itemType { id name } pickupSubtotal pickupUnitPrice } } }",
+    "variables": {
+      "inputs": {
+        "items": [{"id": "7947", "pickupCount": 1}],
+        "zip": "30144",
+        "flightsOfStairsCount": 0,
+        "placement": "INDOOR",
+        "timeslot": "FULL_DAY"
+      }
+    }
+  }
+}
+

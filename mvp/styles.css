@@ -1,0 +1,312 @@
+/* Functional MVP - Simple, Clean Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.subtitle {
+    color: #7f8c8d;
+    font-size: 0.9em;
+}
+
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+h2 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+/* Zip Code Section */
+.zip-section {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.zip-section label {
+    font-weight: 600;
+}
+
+.zip-section input {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 100px;
+}
+
+.zip-section button {
+    padding: 8px 16px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.zip-section button:hover {
+    background: #2980b9;
+}
+
+.status {
+    color: #27ae60;
+    font-size: 0.9em;
+}
+
+.city-name {
+    color: #3498db;
+    font-weight: 600;
+    font-size: 0.9em;
+    margin-left: 5px;
+}
+
+/* Item Search */
+.search-box {
+    margin-bottom: 15px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+/* Item List */
+.item-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.item-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.item-item:hover {
+    background: #f8f9fa;
+}
+
+.item-item:last-child {
+    border-bottom: none;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.item-price {
+    color: #7f8c8d;
+    font-size: 0.9em;
+    margin-top: 4px;
+}
+
+.item-price .price {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+/* Quote Items */
+.quote-items {
+    min-height: 200px;
+}
+
+.empty-message {
+    color: #95a5a6;
+    text-align: center;
+    padding: 40px;
+    font-style: italic;
+}
+
+.quote-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.quote-item-info {
+    flex: 1;
+}
+
+.quote-item-name {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.quote-item-price {
+    color: #7f8c8d;
+    font-size: 0.9em;
+    margin-top: 4px;
+}
+
+.quote-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quantity-control button {
+    width: 30px;
+    height: 30px;
+    border: 1px solid #ddd;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quantity-control button:hover {
+    background: #f0f0f0;
+}
+
+.quantity-control input {
+    width: 50px;
+    text-align: center;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.remove-btn {
+    padding: 6px 12px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.remove-btn:hover {
+    background: #c0392b;
+}
+
+/* Quote Summary */
+.quote-summary {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #eee;
+}
+
+.summary-line {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    color: #555;
+}
+
+.summary-line.minimum {
+    color: #e67e22;
+    font-weight: 600;
+}
+
+.summary-line.total {
+    font-size: 1.2em;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    margin-top: 8px;
+}
+
+/* Loading & Error */
+.loading {
+    text-align: center;
+    color: #3498db;
+    padding: 20px;
+    font-style: italic;
+}
+
+.error {
+    background: #fee;
+    color: #c0392b;
+    padding: 12px;
+    border-radius: 4px;
+    margin-top: 10px;
+    border: 1px solid #e74c3c;
+}
+
+/* Scrollbar */
+.item-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.item-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.item-list::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.item-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+

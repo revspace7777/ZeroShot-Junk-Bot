@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "createdDate": "2025-11-20T00:00:00.000Z",
+    "source": "ZeroShot Junk Bot - Local zip code database",
+    "states": ["GA", "FL"],
+    "description": "Complete zip code database for Georgia and Florida with hierarchical structure"
+  },
+  "GA": {
+    "counties": {
+      "Cobb": {
+        "cities": {
+          "Marietta": {
+            "neighborhoods": {},
+            "zipCodes": ["30006", "30007", "30008", "30060", "30061", "30062", "30063", "30064", "30065", "30066", "30067", "30068", "30069", "30090"]
+          },
+          "Kennesaw": {
+            "neighborhoods": {},
+            "zipCodes": ["30144", "30152", "30156", "30160"]
+          }
+        }
+      }
+    }
+  },
+  "FL": {
+    "counties": {},
+    "note": "Florida zip codes to be populated"
+  }
+}
+
