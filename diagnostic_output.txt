@@ -1,0 +1,116 @@
+﻿Database path: C:\Users\samso\_cursor_projects\ZeroShot Junk Bot\ZeroShot-Junk-Bot\data\goloadup_consolidated.db
+Database size: 16,416,768 bytes
+
+Tables in database: ['pricing']
+
+============================================================
+PRICING TABLE SCHEMA
+============================================================
+Total columns: 8
+
+Column 0: zip_code
+  Type: TEXT
+  Not Null: 0
+  Default: None
+  Primary Key: 1
+
+Column 1: item_id
+  Type: TEXT
+  Not Null: 0
+  Default: None
+  Primary Key: 2
+
+Column 2: price
+  Type: TEXT
+  Not Null: 0
+  Default: None
+  Primary Key: 0
+
+Column 3: price_regular
+  Type: REAL
+  Not Null: 0
+  Default: None
+  Primary Key: 0
+
+Column 4: price_curb
+  Type: REAL
+  Not Null: 0
+  Default: None
+  Primary Key: 0
+
+Column 5: timestamp
+  Type: REAL
+  Not Null: 0
+  Default: None
+  Primary Key: 0
+
+Column 6: item_name
+  Type: INTEGER
+  Not Null: 0
+  Default: None
+  Primary Key: 0
+
+Column 7: state
+  Type: TEXT
+  Not Null: 0
+  Default: 'GA'
+  Primary Key: 0
+
+Total rows: 109,874
+
+============================================================
+SAMPLE DATA (First 3 rows)
+============================================================
+
+Row 1:
+  zip_code: '30289' (type: str)
+  item_id: '7793' (type: str)
+  price: '205.0' (type: str)
+  price_regular: 175.0 (type: float)
+  price_curb: '{"total": 205.0, "basePrice": 175.0, "quantity_requested": 1}' (type: str)
+  timestamp: '2026-01-17 15:39:39' (type: str)
+  item_name: None (type: NoneType)
+  state: 'GA' (type: str)
+
+Row 2:
+  zip_code: '30289' (type: str)
+  item_id: '7446' (type: str)
+  price: '270.0' (type: str)
+  price_regular: 175.0 (type: float)
+  price_curb: '{"total": 270.0, "basePrice": 175.0, "quantity_requested": 5}' (type: str)
+  timestamp: '2026-01-17 15:39:39' (type: str)
+  item_name: None (type: NoneType)
+  state: 'GA' (type: str)
+
+Row 3:
+  zip_code: '30290' (type: str)
+  item_id: '7793' (type: str)
+  price: '89.0' (type: str)
+  price_regular: 59.0 (type: float)
+  price_curb: '{"total": 89.0, "basePrice": 59.0, "quantity_requested": 1}' (type: str)
+  timestamp: '2026-01-17 15:39:39' (type: str)
+  item_name: None (type: NoneType)
+  state: 'GA' (type: str)
+
+============================================================
+NULL VALUE ANALYSIS
+============================================================
+item_name: 48 NULL values (0.04%)
+
+============================================================
+EXAMPLE CASE VERIFICATION
+============================================================
+Looking for: zip_code=30081, item_id=7637
+Found 1 matching rows:
+
+Match 1:
+  zip_code: '30081' (type: str)
+  item_id: '7637' (type: str)
+  price: '79.0' (type: str)
+  price_regular: 59.0 (type: float)
+  price_curb: '{"total": 79.0, "basePrice": 59.0, "quantity_requested": 1}' (type: str)
+  timestamp: '2026-01-17 16:30:38' (type: str)
+  item_name: 'Podium' (type: str)
+  state: 'GA' (type: str)
+
+Diagnostic complete.

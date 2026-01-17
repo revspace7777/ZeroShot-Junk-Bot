@@ -63,6 +63,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS pricing (
             zip_code TEXT,
             item_id TEXT,
+            item_name TEXT,
             total REAL,
             base_price REAL,
             data_json TEXT,
@@ -70,6 +71,12 @@ def init_db():
             PRIMARY KEY (zip_code, item_id)
         )
     ''')
+    # Migration: Check if item_name exists, if not add it
+    try:
+        c.execute("SELECT item_name FROM pricing LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("ALTER TABLE pricing ADD COLUMN item_name TEXT")
+    
     conn.commit()
     conn.close()
 
@@ -85,16 +92,17 @@ def get_processed_zip_items():
     finally:
         conn.close()
 
-def save_result(zip_code, item_id, pricing_data):
+def save_result(zip_code, item_id, item_name, pricing_data):
     with db_lock:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute('''
-            INSERT OR REPLACE INTO pricing (zip_code, item_id, total, base_price, data_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO pricing (zip_code, item_id, item_name, total, base_price, data_json)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             zip_code, 
             item_id, 
+            item_name,
             pricing_data.get('total'), 
             pricing_data.get('basePrice'), 
             json.dumps(pricing_data)
@@ -102,7 +110,7 @@ def save_result(zip_code, item_id, pricing_data):
         conn.commit()
         conn.close()
 
-def process_single_task(zip_code, item_id, qty=1):
+def process_single_task(zip_code, item_id, item_name, qty=1):
     session = get_session()
     
     if not hasattr(thread_local, "csrf_token"):
@@ -138,7 +146,7 @@ def process_single_task(zip_code, item_id, qty=1):
             if 'data' in data and data['data'] and data['data']['pricingDetails']:
                 pricing = data['data']['pricingDetails']
                 pricing['quantity_requested'] = qty
-                save_result(zip_code, item_id, pricing)
+                save_result(zip_code, item_id, item_name, pricing)
                 return True, "Saved"
             else:
                 return False, f"API Error: {json.dumps(data)}"
@@ -203,11 +211,11 @@ def main():
             for t in targets:
                 key = f"{z}|{t['id']}"
                 if key not in processed_set:
-                    tasks.append((z, t['id'], t['qty']))
+                    tasks.append((z, t['id'], t['name'], t['qty']))
     else:
         for z in all_zips:
             for t in targets:
-                tasks.append((z, t['id'], t['qty']))
+                tasks.append((z, t['id'], t['name'], t['qty']))
                 
     log(f"Remaining Tasks to Run: {len(tasks)}")
 
@@ -222,7 +230,7 @@ def main():
     total = len(tasks)
     
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        future_to_task = {executor.submit(process_single_task, z, tid, q): (z, tid) for (z, tid, q) in tasks}
+        future_to_task = {executor.submit(process_single_task, z, tid, tname, q): (z, tid) for (z, tid, tname, q) in tasks}
         
         for future in as_completed(future_to_task):
             (z, tid) = future_to_task[future]

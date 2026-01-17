@@ -1,0 +1,28 @@
+﻿======================================================================
+DATABASE UPDATE VERIFICATION
+======================================================================
+
+Columns in pricing table:
+  1. zip_code
+  2. item_id
+  3. price
+  4. price_regular
+  5. price_curb
+  6. timestamp
+  7. item_name
+  8. state
+  9. price_addition
+  10. price_multiplier
+
+Row Statistics:
+  Total rows in table: 109,874
+  Rows with price_addition: 109,874 (100.0%)
+  Rows with price_multiplier: 109,874 (100.0%)
+
+Example Case Verification (Zip 30081, Item 7637):
+  Zip Code: 30081
+  Item ID: 7637
+  Base Price: $59.00
+  Total Price: $79.00
+  Price Addition: $20.00
+  Price Multiplier: 1.3390x

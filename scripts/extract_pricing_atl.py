@@ -63,6 +63,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS pricing (
             zip_code TEXT,
             item_id TEXT,
+            item_name TEXT,
             total REAL,
             base_price REAL,
             data_json TEXT,
@@ -70,6 +71,12 @@ def init_db():
             PRIMARY KEY (zip_code, item_id)
         )
     ''')
+    # Migration: Check if item_name exists, if not add it
+    try:
+        c.execute("SELECT item_name FROM pricing LIMIT 1")
+    except sqlite3.OperationalError:
+        c.execute("ALTER TABLE pricing ADD COLUMN item_name TEXT")
+    
     conn.commit()
     conn.close()
 
@@ -85,16 +92,17 @@ def get_processed_zip_items():
     finally:
         conn.close()
 
-def save_result(zip_code, item_id, pricing_data):
+def save_result(zip_code, item_id, item_name, pricing_data):
     with db_lock:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute('''
-            INSERT OR REPLACE INTO pricing (zip_code, item_id, total, base_price, data_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO pricing (zip_code, item_id, item_name, total, base_price, data_json)
+            VALUES (?, ?, ?, ?, ?, ?)
         ''', (
             zip_code, 
             item_id, 
+            item_name,
             pricing_data.get('total'), 
             pricing_data.get('basePrice'), 
             json.dumps(pricing_data)
@@ -102,7 +110,7 @@ def save_result(zip_code, item_id, pricing_data):
         conn.commit()
         conn.close()
 
-def process_single_task(zip_code, item_id, qty=1):
+def process_single_task(zip_code, item_id, item_name, qty=1):
     session = get_session()
     
     if not hasattr(thread_local, "csrf_token"):
@@ -138,7 +146,7 @@ def process_single_task(zip_code, item_id, qty=1):
             if 'data' in data and data['data'] and data['data']['pricingDetails']:
                 pricing = data['data']['pricingDetails']
                 pricing['quantity_requested'] = qty
-                save_result(zip_code, item_id, pricing)
+                save_result(zip_code, item_id, item_name, pricing)
                 return True, "Saved"
             else:
                 return False, f"API Error: {json.dumps(data)}"
@@ -157,6 +165,7 @@ def main():
     parser.add_argument('--items', type=str, default="Mattress", help='List of items, e.g. "Mattress,Bag of Junk:5"')
     parser.add_argument('--zip-file', type=str, required=True, help='Path to shard JSON file containing zips')
     args = parser.parse_args()
+    log(f"Arguments: {args}")
 
     # Init
     log("Initializing Database...")
@@ -167,20 +176,24 @@ def main():
         catalog = json.load(f)
     
     # Parse Target Items
-    target_args = [x.strip() for x in args.items.split(',')]
-    targets = []
-    
-    for arg in target_args:
-        parts = arg.split(':')
-        name = parts[0]
-        qty = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+    if args.items.upper() == "ALL":
+        log("Targeting ALL items in catalog.")
+        targets = [{'name': i['name'], 'id': str(i['id']), 'qty': 1} for i in catalog]
+    else:
+        target_args = [x.strip() for x in args.items.split(',')]
+        targets = []
         
-        item = next((i for i in catalog if name.lower() in i.get('name', '').lower()), None)
-        if item:
-            targets.append({'name': item['name'], 'id': str(item['id']), 'qty': qty})
-            log(f"Target Added: {item['name']} (ID: {item['id']}, Qty: {qty})")
-        else:
-            log(f"Warning: Item '{name}' matches no specific item.")
+        for arg in target_args:
+            parts = arg.split(':')
+            name = parts[0]
+            qty = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+            
+            item = next((i for i in catalog if name.lower() in i.get('name', '').lower()), None)
+            if item:
+                targets.append({'name': item['name'], 'id': str(item['id']), 'qty': qty})
+                log(f"Target Added: {item['name']} (ID: {item['id']}, Qty: {qty})")
+            else:
+                log(f"Warning: Item '{name}' matches no specific item.")
 
     if not targets:
         log("No valid targets found. Exiting.")
@@ -203,11 +216,11 @@ def main():
             for t in targets:
                 key = f"{z}|{t['id']}"
                 if key not in processed_set:
-                    tasks.append((z, t['id'], t['qty']))
+                    tasks.append((z, t['id'], t['name'], t['qty']))
     else:
         for z in all_zips:
             for t in targets:
-                tasks.append((z, t['id'], t['qty']))
+                tasks.append((z, t['id'], t['name'], t['qty']))
                 
     log(f"Remaining Tasks to Run: {len(tasks)}")
 
@@ -222,7 +235,7 @@ def main():
     total = len(tasks)
     
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        future_to_task = {executor.submit(process_single_task, z, tid, q): (z, tid) for (z, tid, q) in tasks}
+        future_to_task = {executor.submit(process_single_task, z, tid, tname, q): (z, tid) for (z, tid, tname, q) in tasks}
         
         for future in as_completed(future_to_task):
             (z, tid) = future_to_task[future]
