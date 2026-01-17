@@ -19,21 +19,23 @@ python scripts/extract_catalog.py
 *   **Output**: `data/items-catalog-new.json`
 
 ### 2. Extract Pricing (The Main Job)
-Iterate through zip codes to build the pricing grid.
+Iterate through zip codes to build the pricing grid to SQLite.
 ```bash
-python scripts/extract_pricing.py --resume
+python scripts/extract_pricing.py --workers 20 --resume
 ```
-*   **Flags**: `--resume` (Picks up where it left off in `data/pricing_output.json`).
-*   **Logic**:
-    *   Loads zip codes from `data/zip-codes-master.json`.
-    *   Extracts CSRF token automatically.
-    *   Queries `pricingDetails` for a standard item (Mattress).
-    *   Saves progress every 20 zips.
-    *   Logs progress to terminal.
+*   **Flags**: 
+    *   `--workers <N>`: Number of concurrent threads (Default: 5). Safe to use 20+.
+    *   `--resume`: Skips zip codes already in the database.
+*   **Output**: `data/goloadup.db` (SQLite Database).
+    *   Table: `pricing` (`zip_code`, `item_id`, `total`, `base_price`, `data_json`, `updated_at`).
+*   **Log**: Prints progress and errors to terminal.
 
 ## Technical Details for Future Agents
 *   **API Endpoint**: `https://order.goloadup.com/retail/graphql`
 *   **Auth**: Session Cookie + `X-CSRF-Token` (extracted from `<meta>` tag on `/retail/entry_point`).
+*   **Concurrency**: Uses `ThreadPoolExecutor`. Memory footprint is low (~30MB) regardless of worker count.
+*   **Database**: SQLite (`data/goloadup.db`) prevents I/O bottlenecks and allows instant saving.
+
 *   **Query Structure**: The API uses a tricky input structure where arguments must be inline for the `pricingDetails` query to work correctly (avoiding strict `InputObject` typing issues).
     *   *Correct*: `pricingDetails(inputs: {zip: "30301", ...})`
     *   *Incorrect*: `pricingDetails(inputs: $variable)` (caused type errors).
