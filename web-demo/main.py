@@ -17,12 +17,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Turso database connection via HTTP API
-TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL", "libsql://local-guys-junk-removal-revspace.aws-us-east-2.turso.io")
-TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN", "")
+# Postgres Database Connection
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
-# Convert libsql:// URL to HTTPS with correct API endpoint
-TURSO_HTTP_URL = TURSO_DATABASE_URL.replace("libsql://", "https://") + "/v2/pipeline"
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 class Location(BaseModel):
     zip_code: str
@@ -37,49 +36,35 @@ class Item(BaseModel):
     addition: float
     multiplier: float
 
-def execute_query(query: str, params: list = None):
-    """Execute a query against Turso database via HTTP API"""
-    url = TURSO_HTTP_URL
-    
-    # Build the request payload
-    payload = {
-        "statements": [
-            {
-                "q": query,
-                "params": params or []
-            }
-        ]
-    }
-    
-    # Create the request
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode('utf-8'),
-        headers={
-            'Authorization': f'Bearer {TURSO_AUTH_TOKEN}',
-            'Content-Type': 'application/json'
-        },
-        method='POST'
-    )
-    
+def execute_query(query: str, params: tuple = None, fetch_one: bool = False):
+    """Execute a query against Postgres database via psycopg2"""
+    if not DATABASE_URL:
+        raise HTTPException(status_code=500, detail="DATABASE_URL environment variable not set")
+        
     try:
-        with urllib.request.urlopen(req) as response:
-            result = json.loads(response.read().decode('utf-8'))
-            return result[0]  # Return first statement result
+        # Establish connection for each request (serverless friendly for low volume / Neon pooler)
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(query, params or ())
+                if fetch_one:
+                    return cur.fetchone()
+                return cur.fetchall()
+        finally:
+            conn.close()
     except Exception as e:
+        print(f"Database Query Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/api/validate-zip/{zip_code}")
 async def validate_zip(zip_code: str):
-    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = ?", [zip_code])
+    # Use %s for Postgres placeholders
+    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = %s", (zip_code,), fetch_one=True)
     
-    if 'results' in result and 'rows' in result['results']:
-        count = result['results']['rows'][0][0]
-        if count == 0:
-            return {"valid": False, "message": "Zip code not found in our database."}
+    if result and result.get('count', 0) > 0:
         return {"valid": True, "zip_code": zip_code}
     
-    return {"valid": False, "message": "Database query failed."}
+    return {"valid": False, "message": "Zip code not found in our database."}
 
 @app.get("/api/location/{zip_code}", response_model=Location)
 async def get_location(zip_code: str):
@@ -103,12 +88,12 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
         SELECT item_id, item_name, price_regular as base_price, CAST(price as REAL) as total_price, 
                price_addition as addition, price_multiplier as multiplier
         FROM pricing
-        WHERE zip_code = ?
+        WHERE zip_code = %s
     """
     params = [zip_code]
     
     if search:
-        query += " AND item_name LIKE ?"
+        query += " AND item_name LIKE %s"
         params.append(f"%{search}%")
     
     # Simple whitelist for sorting to prevent injection
@@ -118,18 +103,18 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
     
     query += f" ORDER BY {db_sort_col} {db_order}"
     
-    result = execute_query(query, params)
+    results = execute_query(query, tuple(params))
     
-    if 'results' in result and 'rows' in result['results']:
+    if results:
         items = []
-        for row in result['results']['rows']:
+        for row in results:
             items.append({
-                "item_id": row[0],
-                "item_name": row[1],
-                "base_price": float(row[2]),
-                "total_price": float(row[3]),
-                "addition": float(row[4]),
-                "multiplier": float(row[5])
+                "item_id": row.get('item_id'),
+                "item_name": row.get('item_name'),
+                "base_price": float(row.get('base_price', 0)),
+                "total_price": float(row.get('total_price', 0)),
+                "addition": float(row.get('addition', 0)),
+                "multiplier": float(row.get('multiplier', 0))
             })
         return items
     
