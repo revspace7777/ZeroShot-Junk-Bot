@@ -11,6 +11,8 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  # Include the database file in the function deployment
+  included_files = ["data/goloadup_consolidated.db"]
 
 [[headers]]
   for = "/*"

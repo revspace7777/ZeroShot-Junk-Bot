@@ -15,8 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database path (relative to the script)
-DB_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "goloadup_consolidated.db"))
+# Database path (works in both local and Netlify serverless environments)
+# In Netlify, the function is at netlify/functions/api.py
+# The database is at data/goloadup_consolidated.db from repo root
+DB_PATH = os.environ.get(
+    'DB_PATH',
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "goloadup_consolidated.db"))
+)
 
 class Location(BaseModel):
     zip_code: str
