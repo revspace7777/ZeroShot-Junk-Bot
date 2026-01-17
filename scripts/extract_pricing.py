@@ -16,7 +16,6 @@ CATALOG_FILE = os.path.join(DATA_DIR, 'items-catalog-new.json')
 ZIP_MASTER_FILE = os.path.join(DATA_DIR, 'zip-codes-master.json')
 DB_FILE = os.path.join(DATA_DIR, 'goloadup.db')
 
-# Thread-local storage for sessions to avoid sharing non-thread-safe objects
 thread_local = threading.local()
 print_lock = threading.Lock()
 db_lock = threading.Lock()
@@ -36,8 +35,6 @@ def get_session():
     return thread_local.session
 
 def get_csrf(session):
-    # Only needed once per session really, or refreshed if expired.
-    # We will try to get it.
     try:
         r = session.get('https://order.goloadup.com/retail/entry_point', timeout=10)
         csrf_match = re.search(r'<meta\s+name="csrf-token"\s+content="([^"]+)"', r.text)
@@ -52,24 +49,26 @@ def init_db():
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS pricing (
-            zip_code TEXT PRIMARY KEY,
+            zip_code TEXT,
             item_id TEXT,
             total REAL,
             base_price REAL,
             data_json TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (zip_code, item_id)
         )
     ''')
     conn.commit()
     conn.close()
 
-def get_processed_zips():
+def get_processed_zip_items():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT zip_code FROM pricing")
+    c.execute("SELECT zip_code, item_id FROM pricing")
     rows = c.fetchall()
     conn.close()
-    return set(r[0] for r in rows)
+    # Return set of "zip|item_id" strings for easy lookup
+    return set(f"{r[0]}|{r[1]}" for r in rows)
 
 def save_result(zip_code, item_id, pricing_data):
     # Atomic save
@@ -89,27 +88,25 @@ def save_result(zip_code, item_id, pricing_data):
         conn.commit()
         conn.close()
 
-def load_zips():
+def load_zips(target_states=None):
     with open(ZIP_MASTER_FILE) as f:
         zip_master = json.load(f)
     
-    def find_zips(obj):
-        found = []
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                if k == 'zipCodes' and isinstance(v, list):
-                    found.extend(v)
-                else:
-                    found.extend(find_zips(v))
-        return found
+    found_zips = []
     
-    zips = find_zips(zip_master)
-    return sorted(list(set(zips)))
+    # Structure is {"AL": {"zipCodes": [...]}, "GA": ...}
+    for state, data in zip_master.items():
+        if target_states:
+            if state.upper() in target_states:
+                found_zips.extend(data.get("zipCodes", []))
+        else:
+            found_zips.extend(data.get("zipCodes", []))
+            
+    return sorted(list(set(found_zips)))
 
-def process_single_zip(zip_code, target_id):
+def process_single_task(zip_code, item_id, qty=1):
     session = get_session()
     
-    # Ensure CSRF
     if not hasattr(thread_local, "csrf_token"):
         thread_local.csrf_token = get_csrf(session)
         if not thread_local.csrf_token:
@@ -121,8 +118,8 @@ def process_single_zip(zip_code, target_id):
     }
     api_url = 'https://order.goloadup.com/retail/graphql'
 
-    # Inline arg query
-    arg_str = f'{{zip: "{zip_code}", items: [{{id: "{target_id}", pickupCount: 1}}]}}'
+    arg_str = f'{{zip: "{zip_code}", items: [{{id: "{item_id}", pickupCount: {qty}}}]}}'
+    
     query_str = f"""
     query {{
         pricingDetails(inputs: {arg_str}) {{
@@ -138,12 +135,16 @@ def process_single_zip(zip_code, target_id):
             data = resp.json()
             if 'data' in data and data['data'] and data['data']['pricingDetails']:
                 pricing = data['data']['pricingDetails']
-                save_result(zip_code, target_id, pricing)
+                # Store quantity context in the JSON blob if needed, but DB key is (zip, item_id).
+                # If we run same item with diff quantity, it might overwrite.
+                # For this specific "Bag of Trash:5" run, that's fine.
+                pricing['quantity_requested'] = qty
+                save_result(zip_code, item_id, pricing)
                 return True, "Saved"
             else:
                 return False, f"API Error: {json.dumps(data)}"
         elif resp.status_code == 429:
-            time.sleep(5) # Backoff
+            time.sleep(5) 
             return False, "429 Rate Limit"
         else:
             return False, f"HTTP {resp.status_code}"
@@ -153,7 +154,9 @@ def process_single_zip(zip_code, target_id):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--workers', type=int, default=5, help='Number of concurrent workers')
-    parser.add_argument('--resume', action='store_true', help='Skip already extracted zips')
+    parser.add_argument('--resume', action='store_true', help='Skip already extracted zip+item combinations')
+    parser.add_argument('--items', type=str, default="Mattress", help='List of items, optionally with quantity e.g. "Mattress,Bag of Trash:5"')
+    parser.add_argument('--states', type=str, default="ALL", help='Comma-separated state codes (e.g. GA,FL,TX) or ALL')
     args = parser.parse_args()
 
     # Init
@@ -163,35 +166,73 @@ def main():
     # Load Data
     with open(CATALOG_FILE) as f:
         catalog = json.load(f)
-    target_item = next((i for i in catalog if 'Mattress' in i.get('name', '')), catalog[0])
-    target_id = str(target_item['id'])
     
-    all_zips = load_zips()
-    log(f"Total Zips in Master List: {len(all_zips)}")
+    # Parse Target Items
+    target_args = [x.strip() for x in args.items.split(',')]
+    targets = []
     
-    # Filter
-    if args.resume:
-        processed = get_processed_zips()
-        zips_to_process = [z for z in all_zips if z not in processed]
-        log(f"Skipping {len(processed)} items. {len(zips_to_process)} remaining.")
-    else:
-        zips_to_process = all_zips
+    for arg in target_args:
+        # Check for qty split "Item Name:5"
+        parts = arg.split(':')
+        name = parts[0]
+        qty = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
         
-    if not zips_to_process:
-        log("No zip codes to process.")
+        item = next((i for i in catalog if name.lower() in i.get('name', '').lower()), None)
+        if item:
+            targets.append({'name': item['name'], 'id': str(item['id']), 'qty': qty})
+            log(f"Target Added: {item['name']} (ID: {item['id']}, Qty: {qty})")
+        else:
+            log(f"Warning: Item '{name}' matches no specific item.")
+
+    if not targets:
+        log("No valid targets found. Exiting.")
+        return
+
+    # Parse States
+    target_states = None
+    if args.states.upper() != "ALL":
+        target_states = [s.strip().upper() for s in args.states.split(',')]
+        log(f"Filtering for states: {target_states}")
+    else:
+        log("Loading ALL states.")
+
+    all_zips = load_zips(target_states)
+    log(f"Total Zips to Process: {len(all_zips)}")
+    
+    # Build Task List: (zip, item_id, qty)
+    tasks = [] 
+    
+    if args.resume:
+        processed_set = get_processed_zip_items()
+        log(f"Found {len(processed_set)} existing records.")
+        for z in all_zips:
+            for t in targets:
+                key = f"{z}|{t['id']}"
+                if key not in processed_set:
+                    tasks.append((z, t['id'], t['qty']))
+    else:
+        for z in all_zips:
+            for t in targets:
+                tasks.append((z, t['id'], t['qty']))
+                
+    log(f"Total Tasks (Zip x Items): {len(tasks)}")
+
+    if not tasks:
+        log("No tasks to process. Exiting.")
         return
 
     log(f"Starting extraction with {args.workers} workers...")
     
     processed_count = 0
     errors_count = 0
-    total = len(zips_to_process)
+    total = len(tasks)
     
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        future_to_zip = {executor.submit(process_single_zip, z, target_id): z for z in zips_to_process}
+        # Map future -> task info
+        future_to_task = {executor.submit(process_single_task, z, tid, q): (z, tid) for (z, tid, q) in tasks}
         
-        for future in as_completed(future_to_zip):
-            zip_val = future_to_zip[future]
+        for future in as_completed(future_to_task):
+            (z, tid) = future_to_task[future]
             try:
                 success, msg = future.result()
                 if success:
@@ -199,17 +240,14 @@ def main():
                 else:
                     errors_count += 1
                     if errors_count <= 5:
-                        log(f"Failed {zip_val}: {msg}")
+                        log(f"Failed {z}|{tid}: {msg}")
             except Exception as e:
                 errors_count += 1
-                log(f"Worker Error {zip_val}: {e}")
+                log(f"Worker Error {z}: {e}")
             
             completed = processed_count + errors_count
-            if completed % 10 == 0:
+            if completed % 50 == 0:
                 log(f"Progress: {completed}/{total} | Success: {processed_count} | Errors: {errors_count}")
-
-            # Sleep slightly to avoid purely hammering the exact same CPU slice if running locally
-            # But mostly network bound.
             
     log("Extraction Complete.")
 
