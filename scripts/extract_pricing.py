@@ -88,21 +88,35 @@ def save_result(zip_code, item_id, pricing_data):
         conn.commit()
         conn.close()
 
+SERVICEABLE_FILE = os.path.join(DATA_DIR, 'serviceable_zips.json')
+
 def load_zips(target_states=None):
+    # 1. Load Master (for State info)
     with open(ZIP_MASTER_FILE) as f:
         zip_master = json.load(f)
     
-    found_zips = []
-    
+    candidates = []
     # Structure is {"AL": {"zipCodes": [...]}, "GA": ...}
     for state, data in zip_master.items():
         if target_states:
             if state.upper() in target_states:
-                found_zips.extend(data.get("zipCodes", []))
+                candidates.extend(data.get("zipCodes", []))
         else:
-            found_zips.extend(data.get("zipCodes", []))
-            
-    return sorted(list(set(found_zips)))
+            candidates.extend(data.get("zipCodes", []))
+    
+    # 2. Filter by Serviceable List (if exists)
+    if os.path.exists(SERVICEABLE_FILE):
+        log(f"Loading serviceable allowlist from {os.path.basename(SERVICEABLE_FILE)}...")
+        with open(SERVICEABLE_FILE) as f:
+            serviceable = set(json.load(f))
+        
+        # Intersect
+        final_list = [z for z in candidates if z in serviceable]
+        log(f"Filtered {len(candidates)} zips down to {len(final_list)} serviceable zips.")
+        return sorted(final_list)
+    else:
+        log("No serviceable whitelist found. Using all candidates.")
+        return sorted(list(set(candidates)))
 
 def process_single_task(zip_code, item_id, qty=1):
     session = get_session()
@@ -157,6 +171,7 @@ def main():
     parser.add_argument('--resume', action='store_true', help='Skip already extracted zip+item combinations')
     parser.add_argument('--items', type=str, default="Mattress", help='List of items, optionally with quantity e.g. "Mattress,Bag of Trash:5"')
     parser.add_argument('--states', type=str, default="ALL", help='Comma-separated state codes (e.g. GA,FL,TX) or ALL')
+    parser.add_argument('--zip-file', type=str, help='Path to specific JSON file containing list of zips to process (Overrides --states)')
     args = parser.parse_args()
 
     # Init
@@ -168,35 +183,45 @@ def main():
         catalog = json.load(f)
     
     # Parse Target Items
-    target_args = [x.strip() for x in args.items.split(',')]
-    targets = []
-    
-    for arg in target_args:
-        # Check for qty split "Item Name:5"
-        parts = arg.split(':')
-        name = parts[0]
-        qty = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+    if args.items.upper() == "ALL":
+        log("Targeting ALL items in catalog.")
+        targets = [{'name': i['name'], 'id': str(i['id']), 'qty': 1} for i in catalog]
+    else:
+        target_args = [x.strip() for x in args.items.split(',')]
+        targets = []
         
-        item = next((i for i in catalog if name.lower() in i.get('name', '').lower()), None)
-        if item:
-            targets.append({'name': item['name'], 'id': str(item['id']), 'qty': qty})
-            log(f"Target Added: {item['name']} (ID: {item['id']}, Qty: {qty})")
-        else:
-            log(f"Warning: Item '{name}' matches no specific item.")
+        for arg in target_args:
+            # Check for qty split "Item Name:5"
+            parts = arg.split(':')
+            name = parts[0]
+            qty = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 1
+            
+            item = next((i for i in catalog if name.lower() in i.get('name', '').lower()), None)
+            if item:
+                targets.append({'name': item['name'], 'id': str(item['id']), 'qty': qty})
+                log(f"Target Added: {item['name']} (ID: {item['id']}, Qty: {qty})")
+            else:
+                log(f"Warning: Item '{name}' matches no specific item.")
 
     if not targets:
         log("No valid targets found. Exiting.")
         return
 
-    # Parse States
-    target_states = None
-    if args.states.upper() != "ALL":
-        target_states = [s.strip().upper() for s in args.states.split(',')]
-        log(f"Filtering for states: {target_states}")
+    # Load Zips
+    if args.zip_file:
+        log(f"Loading zips from file: {args.zip_file}")
+        with open(args.zip_file) as f:
+            all_zips = json.load(f)
     else:
-        log("Loading ALL states.")
+        # Parse States
+        target_states = None
+        if args.states.upper() != "ALL":
+            target_states = [s.strip().upper() for s in args.states.split(',')]
+            log(f"Filtering for states: {target_states}")
+        else:
+            log("Loading ALL states.")
+        all_zips = load_zips(target_states)
 
-    all_zips = load_zips(target_states)
     log(f"Total Zips to Process: {len(all_zips)}")
     
     # Build Task List: (zip, item_id, qty)
