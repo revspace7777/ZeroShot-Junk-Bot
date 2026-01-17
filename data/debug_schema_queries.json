@@ -1,0 +1,90 @@
+{
+  "data": {
+    "__schema": {
+      "queryType": {
+        "fields": [
+          {
+            "name": "excludedDates",
+            "args": [
+              {
+                "name": "inputs",
+                "type": {
+                  "name": null,
+                  "kind": "NON_NULL"
+                }
+              }
+            ],
+            "type": {
+              "name": null,
+              "kind": "NON_NULL",
+              "ofType": {
+                "name": "ExcludedDates",
+                "kind": "OBJECT"
+              }
+            }
+          },
+          {
+            "name": "itemTypes",
+            "args": [
+              {
+                "name": "orderByMostPurchased",
+                "type": {
+                  "name": "Boolean",
+                  "kind": "SCALAR"
+                }
+              }
+            ],
+            "type": {
+              "name": null,
+              "kind": "NON_NULL",
+              "ofType": {
+                "name": "ItemTypesData",
+                "kind": "OBJECT"
+              }
+            }
+          },
+          {
+            "name": "pricingDetails",
+            "args": [
+              {
+                "name": "inputs",
+                "type": {
+                  "name": null,
+                  "kind": "NON_NULL"
+                }
+              }
+            ],
+            "type": {
+              "name": null,
+              "kind": "NON_NULL",
+              "ofType": {
+                "name": "PricingDetails",
+                "kind": "OBJECT"
+              }
+            }
+          },
+          {
+            "name": "serviceAvailability",
+            "args": [
+              {
+                "name": "inputs",
+                "type": {
+                  "name": null,
+                  "kind": "NON_NULL"
+                }
+              }
+            ],
+            "type": {
+              "name": null,
+              "kind": "NON_NULL",
+              "ofType": {
+                "name": "ServiceAvailability",
+                "kind": "OBJECT"
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

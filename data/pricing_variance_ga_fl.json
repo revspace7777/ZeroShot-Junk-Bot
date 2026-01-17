@@ -1,0 +1,594 @@
+{
+  "30006": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30007": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30008": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30060": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30061": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30062": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30063": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30064": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30065": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30066": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30067": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30068": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30069": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30090": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30144": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30152": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30156": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "30160": {
+    "total": 89.0,
+    "basePrice": 59.0
+  },
+  "32003": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32013": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32033": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32043": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32053": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32063": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32073": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32083": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32113": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32123": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32133": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32143": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32163": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32173": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32183": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32193": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32203": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32223": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32233": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32303": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32313": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32323": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32333": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32343": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32353": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32403": {
+    "total": 114.0,
+    "basePrice": 84.0
+  },
+  "32413": {
+    "total": 114.0,
+    "basePrice": 84.0
+  },
+  "32423": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32433": {
+    "total": 124.0,
+    "basePrice": 94.0
+  },
+  "32443": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32463": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32503": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32513": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32533": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32563": {
+    "total": 124.0,
+    "basePrice": 94.0
+  },
+  "32583": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32603": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32643": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32653": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32663": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32683": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32693": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "32703": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32713": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32733": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32753": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32763": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "32773": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32783": {
+    "total": 119.0,
+    "basePrice": 89.0
+  },
+  "32793": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32803": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32833": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "32903": {
+    "total": 119.0,
+    "basePrice": 89.0
+  },
+  "32923": {
+    "total": 119.0,
+    "basePrice": 89.0
+  },
+  "32953": {
+    "total": 119.0,
+    "basePrice": 89.0
+  },
+  "32963": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "33013": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33023": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33033": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33043": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "33063": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33073": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33133": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33143": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33153": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33163": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33173": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33183": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33193": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33303": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33313": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33403": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33413": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33433": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33443": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33463": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33483": {
+    "total": 104.0,
+    "basePrice": 74.0
+  },
+  "33493": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "33513": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "33523": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33543": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33563": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33573": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33593": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33603": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33613": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33623": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33633": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33703": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33713": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33733": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33743": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33763": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33773": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33803": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33813": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33823": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33843": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "33853": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33863": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "33873": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "33903": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "33913": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "33953": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "33973": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "33983": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34103": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34113": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34133": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34143": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34203": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34223": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34233": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34243": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34293": {
+    "total": 129.0,
+    "basePrice": 79.0
+  },
+  "34423": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "34433": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "34453": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "34473": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34603": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34613": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34653": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34683": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34713": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34743": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34753": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "34773": {
+    "total": 99.0,
+    "basePrice": 69.0
+  },
+  "34953": {
+    "total": 109.0,
+    "basePrice": 79.0
+  },
+  "34973": {
+    "total": 168.0,
+    "basePrice": 138.0
+  },
+  "34983": {
+    "total": 109.0,
+    "basePrice": 79.0
+  }
+}
