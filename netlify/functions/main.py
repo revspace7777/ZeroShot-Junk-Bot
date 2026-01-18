@@ -30,8 +30,6 @@ class Item(BaseModel):
     item_name: str
     base_price: float
     total_price: float
-    addition: float
-    multiplier: float
 
 def get_db_connection():
     if not DATABASE_URL:
@@ -90,8 +88,7 @@ async def get_location(zip_code: str):
 @app.get("/api/items/{zip_code}", response_model=List[Item])
 async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = "item_name", order: str = "asc"):
     query = """
-        SELECT item_id, item_name, price_regular as base_price, CAST(price as FLOAT) as total_price, 
-               price_addition as addition, price_multiplier as multiplier
+        SELECT item_id, item_name, price_regular as base_price, CAST(price as FLOAT) as total_price
         FROM pricing
         WHERE zip_code = %s
     """
@@ -118,9 +115,7 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
                 "item_id": row['item_id'],
                 "item_name": row['item_name'],
                 "base_price": float(row['base_price'] or 0),
-                "total_price": float(row['total_price'] or 0),
-                "addition": float(row['addition'] or 0),
-                "multiplier": float(row['multiplier'] or 0)
+                "total_price": float(row['total_price'] or 0)
             })
         return items
     
