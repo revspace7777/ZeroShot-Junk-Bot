@@ -17,11 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Postgres Database Connection
-import psycopg2
-from psycopg2.extras import RealDictCursor
+# SQLite Database Connection
+import sqlite3
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Path to the local database file
+# Assuming main.py is in web-demo/ and db is in data/
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "goloadup_consolidated.db")
 
 class Location(BaseModel):
     zip_code: str
@@ -36,33 +37,42 @@ class Item(BaseModel):
     addition: float
     multiplier: float
 
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row  # Return rows as dict-like objects
+    return conn
+
 def execute_query(query: str, params: tuple = None, fetch_one: bool = False):
-    """Execute a query against Postgres database via psycopg2"""
-    if not DATABASE_URL:
-        raise HTTPException(status_code=500, detail="DATABASE_URL environment variable not set")
-        
+    """Execute a query against local SQLite database"""
     try:
-        # Establish connection for each request (serverless friendly for low volume / Neon pooler)
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        try:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query, params or ())
-                if fetch_one:
-                    return cur.fetchone()
-                return cur.fetchall()
-        finally:
-            conn.close()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(query, params or ())
+        
+        if fetch_one:
+            result = cursor.fetchone()
+        else:
+            result = cursor.fetchall()
+            
+        conn.close()
+        return result
     except Exception as e:
         print(f"Database Query Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/api/validate-zip/{zip_code}")
 async def validate_zip(zip_code: str):
-    # Use %s for Postgres placeholders
-    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = %s", (zip_code,), fetch_one=True)
+    # Use ? for SQLite placeholders
+    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = ?", (zip_code,), fetch_one=True)
     
-    if result and result.get('count', 0) > 0:
-        return {"valid": True, "zip_code": zip_code}
+    # SQLite Row object behaves like a dict but we access by index or key
+    # count(*) usually returns key 'count' if aliased, or just index 0
+    if result:
+        # Check if result is dict-like (sqlite3.Row) or tuple
+        count = result['count'] if isinstance(result, sqlite3.Row) else result[0]
+        if count > 0:
+            return {"valid": True, "zip_code": zip_code}
     
     return {"valid": False, "message": "Zip code not found in our database."}
 
@@ -88,12 +98,12 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
         SELECT item_id, item_name, price_regular as base_price, CAST(price as REAL) as total_price, 
                price_addition as addition, price_multiplier as multiplier
         FROM pricing
-        WHERE zip_code = %s
+        WHERE zip_code = ?
     """
     params = [zip_code]
     
     if search:
-        query += " AND item_name LIKE %s"
+        query += " AND item_name LIKE ?"
         params.append(f"%{search}%")
     
     # Simple whitelist for sorting to prevent injection
@@ -108,13 +118,14 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
     if results:
         items = []
         for row in results:
+            # SQLite Row objects allow dictionary access
             items.append({
-                "item_id": row.get('item_id'),
-                "item_name": row.get('item_name'),
-                "base_price": float(row.get('base_price', 0)),
-                "total_price": float(row.get('total_price', 0)),
-                "addition": float(row.get('addition', 0)),
-                "multiplier": float(row.get('multiplier', 0))
+                "item_id": row['item_id'],
+                "item_name": row['item_name'],
+                "base_price": float(row['base_price'] or 0),
+                "total_price": float(row['total_price'] or 0),
+                "addition": float(row['addition'] or 0),
+                "multiplier": float(row['multiplier'] or 0)
             })
         return items
     

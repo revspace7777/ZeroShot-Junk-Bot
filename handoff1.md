@@ -1,94 +1,27 @@
-# Handoff: Database Migration for Netlify Deployment
+# Handoff: Neon (Postgres) Migration Complete
 
-## Current Situation
+## Status
+- **Backend**: Migrated to Neon (PostgreSQL). Code pushed to `main`.
+- **Deployment**: Netlify build triggered.
+- **Data**: Migration script running locally (filling the remote DB).
+  - **Progress**: ~12,000 / 109,874 rows (11%) as of last check.
+  - **ETA**: ~30 mins to complete.
 
-**Project**: Local Guys Junk Removal (formerly ZeroShot Junk Bot)
-- **Live Site**: https://zeroshot-junk-bot.netlify.app (frontend deployed, backend failing)
-- **Issue**: SQLite database (18MB) cannot be bundled with Netlify serverless functions
-- **Error**: "Failed to connect to backend" on live site
+## Configuration
+- **Database**: Neon (Postgres)
+- **Repo**: `web-demo/main.py` updated to use `psycopg2`.
+- **Environment**:
+  - `DATABASE_URL` set in Netlify Site Configuration.
+  - `requirements.txt` includes `psycopg2-binary`.
 
-## What's Working
+## Changes Made
+1.  **Dependencies**: Added `psycopg2-binary` to `requirements.txt`.
+2.  **Code**: Refactored `main.py` to use `psycopg2` for DB connections and adapted SQL queries/parsing.
+3.  **Migration**: Created `scripts/migrate_to_neon.py` to upload local SQLite data to Neon.
 
-✅ Frontend deployed successfully to Netlify
-✅ Local development works perfectly (`localhost:5173` + `localhost:8000`)
-✅ Rebranding to "Local Guys Junk Removal" complete
-✅ Mobile-optimized UI with Chainlink Blue (#0846f6) theme
+## Next Session
+- Verify the full data set has been uploaded (check for 109874 rows).
+- Verify the live Netlify site APIs are responding correctly.
 
-## What's Broken
-
-❌ Backend API on Netlify (serverless functions can't access SQLite database)
-❌ Database needs to be migrated to cloud-hosted solution
-
-## Attempted Solutions
-
-1. **Turso (libSQL)** - Attempted but complex:
-   - Created database: `local-guys-junk-removal-revspace.aws-us-east-2.turso.io`
-   - Auth token available in `web-demo/.env`
-   - Problem: 21MB SQL dump too large for web interface import
-   - Turso CLI installation failed on Windows
-
-2. **Updated Code** (ready for cloud DB):
-   - `web-demo/main.py` - Modified to use HTTP API for Turso
-   - Environment variables configured in `web-demo/.env`
-   - `netlify.toml` - Removed database bundling
-
-## Recommended Next Steps
-
-### Option 1: Cloudflare D1 (Recommended)
-User has Cloudflare account. D1 is simpler:
-
-```bash
-# Install Wrangler CLI
-npm install -g wrangler
-
-# Login to Cloudflare
-wrangler login
-
-# Create D1 database
-wrangler d1 create local-guys-junk-removal
-
-# Import data (use the generated SQL dump)
-wrangler d1 execute local-guys-junk-removal --file=data/turso_import.sql
-
-# Get database ID and update code
-```
-
-### Option 2: Complete Turso Setup
-Use Turso CLI to import the database:
-
-```bash
-# Install Turso CLI (try alternative method)
-# Import database
-turso db shell local-guys-junk-removal < data/turso_import.sql
-```
-
-## Key Files
-
-- **Database**: `data/goloadup_consolidated.db` (18.4 MB, 109,874 rows)
-- **SQL Dump**: `data/turso_import.sql` (21 MB - generated for import)
-- **Backend**: `web-demo/main.py` (FastAPI, ready for cloud DB)
-- **Frontend**: `web-demo/frontend/` (React + Vite)
-- **Config**: `netlify.toml`, `web-demo/.env`
-
-## Environment Variables Needed (Netlify)
-
-Once database is migrated, add to Netlify:
-```
-TURSO_DATABASE_URL=<your-database-url>
-TURSO_AUTH_TOKEN=<your-auth-token>
-```
-OR for D1:
-```
-D1_DATABASE_ID=<your-d1-id>
-CLOUDFLARE_ACCOUNT_ID=<your-account-id>
-CLOUDFLARE_API_TOKEN=<your-api-token>
-```
-
-## Goal
-
-Get the backend API working on Netlify by migrating the SQLite database to a cloud-hosted solution (Cloudflare D1 or Turso), then update the code to connect to it.
-
-## Repository
-
-- **GitHub**: Connected to Netlify (auto-deploys on push to main)
-- **Local**: `c:\Users\samso\_cursor_projects\ZeroShot Junk Bot\ZeroShot-Junk-Bot`
+## Credentials
+- **Neon URL**: `postgresql://neondb_owner:...@ep-little-firefly-ahl7q0i5-pooler.c-3.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require` (Set in Netlify).
