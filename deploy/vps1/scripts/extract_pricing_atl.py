@@ -59,15 +59,19 @@ def get_csrf(session):
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    # Updated schema to match existing consolidated DB structure
     c.execute('''
         CREATE TABLE IF NOT EXISTS pricing (
             zip_code TEXT,
             item_id TEXT,
             item_name TEXT,
-            total REAL,
-            base_price REAL,
-            data_json TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            price TEXT,
+            price_regular REAL,
+            price_curb TEXT,
+            price_addition REAL,
+            price_multiplier REAL,
+            state TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (zip_code, item_id)
         )
     ''')
@@ -96,16 +100,18 @@ def save_result(zip_code, item_id, item_name, pricing_data):
     with db_lock:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
+        # Mapped to match existing DB schema found in diagnostic_output.txt
         c.execute('''
-            INSERT OR REPLACE INTO pricing (zip_code, item_id, item_name, total, base_price, data_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO pricing (zip_code, item_id, price, price_regular, price_curb, item_name, state, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (
             zip_code, 
             item_id, 
+            str(pricing_data.get('total')),   # Maps to 'price' column
+            pricing_data.get('basePrice'),    # Maps to 'price_regular' column
+            json.dumps(pricing_data),         # Maps to 'price_curb' column (used as JSON dump)
             item_name,
-            pricing_data.get('total'), 
-            pricing_data.get('basePrice'), 
-            json.dumps(pricing_data)
+            'GA'                              # Default state based on your diag data
         ))
         conn.commit()
         conn.close()

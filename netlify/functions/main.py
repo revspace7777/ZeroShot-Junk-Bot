@@ -4,8 +4,8 @@ import os
 import json
 from typing import List, Optional
 from pydantic import BaseModel
-import urllib.request
-import urllib.parse
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = FastAPI(title="Local Guys Junk Removal API")
 
@@ -17,12 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# SQLite Database Connection
-import sqlite3
-
-# Path to the local database file
-# Assuming main.py is in web-demo/ and db is in data/
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "goloadup_consolidated.db")
+# Postgres (Neon) Database Connection using DATABASE_URL env variable
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 class Location(BaseModel):
     zip_code: str
@@ -38,12 +34,13 @@ class Item(BaseModel):
     multiplier: float
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Return rows as dict-like objects
+    if not DATABASE_URL:
+        raise HTTPException(status_code=500, detail="DATABASE_URL environment variable not set")
+    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
 def execute_query(query: str, params: tuple = None, fetch_one: bool = False):
-    """Execute a query against local SQLite database"""
+    """Execute a query against Neon Postgres database"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -63,14 +60,12 @@ def execute_query(query: str, params: tuple = None, fetch_one: bool = False):
 
 @app.get("/api/validate-zip/{zip_code}")
 async def validate_zip(zip_code: str):
-    # Use ? for SQLite placeholders
-    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = ?", (zip_code,), fetch_one=True)
+    # Use %s for Postgres placeholders
+    result = execute_query("SELECT COUNT(*) as count FROM pricing WHERE zip_code = %s", (zip_code,), fetch_one=True)
     
-    # SQLite Row object behaves like a dict but we access by index or key
-    # count(*) usually returns key 'count' if aliased, or just index 0
+    # RealDictCursor returns dict-like objects
     if result:
-        # Check if result is dict-like (sqlite3.Row) or tuple
-        count = result['count'] if isinstance(result, sqlite3.Row) else result[0]
+        count = result['count']
         if count > 0:
             return {"valid": True, "zip_code": zip_code}
     
@@ -95,19 +90,19 @@ async def get_location(zip_code: str):
 @app.get("/api/items/{zip_code}", response_model=List[Item])
 async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = "item_name", order: str = "asc"):
     query = """
-        SELECT item_id, item_name, price_regular as base_price, CAST(price as REAL) as total_price, 
+        SELECT item_id, item_name, price_regular as base_price, CAST(price as FLOAT) as total_price, 
                price_addition as addition, price_multiplier as multiplier
         FROM pricing
-        WHERE zip_code = ?
+        WHERE zip_code = %s
     """
     params = [zip_code]
     
     if search:
-        query += " AND item_name LIKE ?"
+        query += " AND item_name ILIKE %s"
         params.append(f"%{search}%")
     
     # Simple whitelist for sorting to prevent injection
-    sort_columns = {"item_name": "item_name", "base_price": "price_regular", "total_price": "CAST(price as REAL)"}
+    sort_columns = {"item_name": "item_name", "base_price": "price_regular", "total_price": "CAST(price as FLOAT)"}
     db_sort_col = sort_columns.get(sort_by, "item_name")
     db_order = "ASC" if order.lower() == "asc" else "DESC"
     
@@ -118,7 +113,7 @@ async def get_items(zip_code: str, search: Optional[str] = None, sort_by: str = 
     if results:
         items = []
         for row in results:
-            # SQLite Row objects allow dictionary access
+            # RealDictCursor returns dict objects
             items.append({
                 "item_id": row['item_id'],
                 "item_name": row['item_name'],
