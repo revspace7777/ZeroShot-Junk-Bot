@@ -59,28 +59,20 @@ def get_csrf(session):
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Updated schema to match existing consolidated DB structure
+    # Updated Schema to match consolidated DB
     c.execute('''
         CREATE TABLE IF NOT EXISTS pricing (
             zip_code TEXT,
             item_id TEXT,
-            item_name TEXT,
             price TEXT,
             price_regular REAL,
             price_curb TEXT,
-            price_addition REAL,
-            price_multiplier REAL,
-            state TEXT,
+            item_name TEXT,
+            state TEXT DEFAULT 'GA',
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (zip_code, item_id)
         )
     ''')
-    # Migration: Check if item_name exists, if not add it
-    try:
-        c.execute("SELECT item_name FROM pricing LIMIT 1")
-    except sqlite3.OperationalError:
-        c.execute("ALTER TABLE pricing ADD COLUMN item_name TEXT")
-    
     conn.commit()
     conn.close()
 
@@ -100,18 +92,18 @@ def save_result(zip_code, item_id, item_name, pricing_data):
     with db_lock:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        # Mapped to match existing DB schema found in diagnostic_output.txt
+        # Insert into the NEW schema columns
         c.execute('''
             INSERT OR REPLACE INTO pricing (zip_code, item_id, price, price_regular, price_curb, item_name, state, timestamp)
             VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         ''', (
             zip_code, 
             item_id, 
-            str(pricing_data.get('total')),   # Maps to 'price' column
-            pricing_data.get('basePrice'),    # Maps to 'price_regular' column
-            json.dumps(pricing_data),         # Maps to 'price_curb' column (used as JSON dump)
+            str(pricing_data.get('total')),   # Maps to price
+            pricing_data.get('basePrice'),    # Maps to price_regular
+            json.dumps(pricing_data),         # Maps to price_curb (full json)
             item_name,
-            'GA'                              # Default state based on your diag data
+            'GA'                              # Default state
         ))
         conn.commit()
         conn.close()
@@ -142,7 +134,7 @@ def process_single_task(zip_code, item_id, item_name, qty=1):
     """
     
     try:
-        # 10% chance to rotate UA mid-session to avoid looking too static if it's a long running thread
+        # 10% chance to rotate UA mid-session to avoid looking too static
         if random.random() < 0.1:
              session.headers.update({'User-Agent': random.choice(USER_AGENTS)})
 
