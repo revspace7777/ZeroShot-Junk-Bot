@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Main Pricing Lookup Page -->
+    <template id="pricing_page" name="Junk Pricing Lookup">
+        <t t-call="website.layout">
+            <div id="pricing-app" class="container py-5">
+                <div class="row justify-content-center">
+                    <div class="col-md-8 col-lg-6">
+                        <div class="text-center mb-5">
+                            <h1 class="display-4 fw-bold text-primary">Junk Removal Pricing</h1>
+                            <p class="lead text-muted">Get instant pricing for your area</p>
+                        </div>
+                        
+                        <div class="card shadow-lg border-0">
+                            <div class="card-body p-4">
+                                <form action="/junk/search" method="POST" class="pricing-form">
+                                    <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                    
+                                    <div class="mb-4">
+                                        <label for="zip_code" class="form-label fw-semibold">
+                                            <i class="fa fa-map-marker-alt me-2"></i>Enter Your Zip Code
+                                        </label>
+                                        <input type="text" name="zip_code" id="zip_code" 
+                                               class="form-control form-control-lg text-center" 
+                                               placeholder="e.g. 30144" 
+                                               pattern="[0-9]{5}" 
+                                               maxlength="5"
+                                               required=""
+                                               t-att-value="zip_code or ''"/>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                                        <i class="fa fa-search me-2"></i>Get Pricing
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <p class="text-center text-muted mt-4">
+                            <small>Serving the Greater Atlanta area</small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Results Page -->
+    <template id="pricing_results" name="Pricing Results">
+        <t t-call="website.layout">
+            <div class="container py-5">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h1 class="h3 mb-0">
+                                <t t-if="valid">
+                                    Pricing for <span class="text-primary"><t t-esc="zip_code"/></span>
+                                </t>
+                                <t t-else="">
+                                    Zip Code Not Found
+                                </t>
+                            </h1>
+                            <a href="/junk/pricing" class="btn btn-outline-secondary">
+                                <i class="fa fa-arrow-left me-2"></i>New Search
+                            </a>
+                        </div>
+
+                        <t t-if="valid">
+                            <t t-if="items">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Item</th>
+                                                <th class="text-end">Base Price</th>
+                                                <th class="text-end">Total Price</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="items" t-as="item">
+                                                <tr>
+                                                    <td><t t-esc="item['item_name']"/></td>
+                                                    <td class="text-end text-muted">
+                                                        $<t t-esc="'{:.2f}'.format(item['base_price'])"/>
+                                                    </td>
+                                                    <td class="text-end fw-bold text-success">
+                                                        $<t t-esc="'{:.2f}'.format(item['total_price'])"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-muted mt-3">
+                                    <small>Showing <t t-esc="len(items)"/> items for zip code <t t-esc="zip_code"/></small>
+                                </p>
+                            </t>
+                            <t t-else="">
+                                <div class="alert alert-info">
+                                    No pricing data available for this zip code.
+                                </div>
+                            </t>
+                        </t>
+                        <t t-else="">
+                            <div class="alert alert-warning">
+                                <i class="fa fa-exclamation-triangle me-2"></i>
+                                Sorry, we don't have pricing data for zip code <strong><t t-esc="zip_code"/></strong>.
+                                <br/><br/>
+                                <a href="/junk/pricing" class="btn btn-warning">Try Another Zip Code</a>
+                            </div>
+                        </t>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+</odoo>

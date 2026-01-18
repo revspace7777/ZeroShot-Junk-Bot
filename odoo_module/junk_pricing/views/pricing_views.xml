@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Backend Tree View -->
+    <record id="view_junk_pricing_item_tree" model="ir.ui.view">
+        <field name="name">junk.pricing.item.tree</field>
+        <field name="model">junk.pricing.item</field>
+        <field name="arch" type="xml">
+            <tree string="Pricing Items">
+                <field name="zip_code"/>
+                <field name="item_name"/>
+                <field name="price_regular"/>
+                <field name="price"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Backend Form View -->
+    <record id="view_junk_pricing_item_form" model="ir.ui.view">
+        <field name="name">junk.pricing.item.form</field>
+        <field name="model">junk.pricing.item</field>
+        <field name="arch" type="xml">
+            <form string="Pricing Item">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="zip_code"/>
+                            <field name="item_id"/>
+                            <field name="item_name"/>
+                            <field name="state"/>
+                        </group>
+                        <group>
+                            <field name="price_regular"/>
+                            <field name="price"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="price_curb"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_junk_pricing_item_search" model="ir.ui.view">
+        <field name="name">junk.pricing.item.search</field>
+        <field name="model">junk.pricing.item</field>
+        <field name="arch" type="xml">
+            <search string="Search Pricing">
+                <field name="zip_code"/>
+                <field name="item_name"/>
+                <field name="state"/>
+                <group expand="0" string="Group By">
+                    <filter string="Zip Code" name="group_zip" context="{'group_by': 'zip_code'}"/>
+                    <filter string="State" name="group_state" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_junk_pricing_item" model="ir.actions.act_window">
+        <field name="name">Junk Pricing</field>
+        <field name="res_model">junk.pricing.item</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Menu -->
+    <menuitem id="menu_junk_pricing_root" name="Junk Pricing" sequence="100"/>
+    <menuitem id="menu_junk_pricing_items" name="Pricing Items" 
+              parent="menu_junk_pricing_root" 
+              action="action_junk_pricing_item" sequence="10"/>
+</odoo>
