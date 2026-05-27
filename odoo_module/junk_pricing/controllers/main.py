@@ -42,3 +42,8 @@ class JunkPricingController(http.Controller):
             'valid': valid,
             'items': items,
         })
+
+    @http.route('/junkbot', type='http', auth='public', website=True)
+    def junkbot_app(self, **kwargs):
+        """Serve the React Micro-Frontend for Junkbot"""
+        return request.render('junk_pricing.react_widget_page')

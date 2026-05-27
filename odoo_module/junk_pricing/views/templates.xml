@@ -114,4 +114,15 @@
             </div>
         </t>
     </template>
+
+    <!-- React Micro-Frontend Widget Injector -->
+    <template id="react_widget_page" name="React Widget">
+        <t t-call="website.layout">
+            <!-- React mount point -->
+            <div id="root"></div>
+            <!-- Compiled Vite assets -->
+            <link rel="stylesheet" href="/junk_pricing/static/src/pricing-widget.css"/>
+            <script defer="defer" src="/junk_pricing/static/src/pricing-widget.js"></script>
+        </t>
+    </template>
 </odoo>

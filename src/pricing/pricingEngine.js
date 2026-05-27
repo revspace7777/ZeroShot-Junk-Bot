@@ -114,19 +114,23 @@ async function getBasePrice(zipCode, connectionString) {
     await client.connect();
     
     // 1. Check exact match
-    const rs = await client.query('SELECT price_regular FROM pricing WHERE zip_code = $1 LIMIT 1', [zipCode]);
-    if (rs.rows.length > 0 && rs.rows[0].price_regular != null) {
-      return Number(rs.rows[0].price_regular);
+    const rs = await client.query('SELECT base_price FROM pricing WHERE zip_code = $1 LIMIT 1', [zipCode]);
+    if (rs.rows.length > 0 && rs.rows[0].base_price != null) {
+      return Number(rs.rows[0].base_price);
     }
 
     // Smart Fallback: SCF prefix (first 3 digits)
     const scf = String(zipCode).substring(0, 3);
-    const rsScf = await client.query('SELECT AVG(price_regular) as avg_price FROM pricing WHERE CAST(zip_code AS TEXT) LIKE $1', [`${scf}%`]);
+    const rsScf = await client.query('SELECT AVG(base_price) as avg_price FROM pricing WHERE CAST(zip_code AS TEXT) LIKE $1', [`${scf}%`]);
     if (rsScf.rows.length > 0 && rsScf.rows[0].avg_price != null) {
       return Number(rsScf.rows[0].avg_price);
     }
   } catch (err) {
-    console.error("DB Error querying Postgres:", err.message);
+    if (err.message && err.message.includes('relation "pricing" does not exist')) {
+      // Harmless: The Python scraper hasn't initialized the database yet.
+    } else {
+      console.error("DB Error querying Postgres:", err.message);
+    }
   } finally {
     await client.end();
   }

@@ -1,4 +1,4 @@
-import { calculateTotalPrice, setCatalog } from '../../src/pricing/pricingEngine.js';
+import { calculateTotalPrice, setCatalog, getBasePrice } from '../../src/pricing/pricingEngine.js';
 import { processRequest } from '../../src/extraction/disambiguation.js';
 import catalogData from '../../data/items-catalog-new.json';
 
@@ -157,6 +157,34 @@ export default {
           unresolvedItems: finalUnresolved,
           visionText: extractedText // Optional, useful for debugging/UI
         }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (request.method === 'GET' && url.pathname.startsWith('/api/validate-zip/')) {
+        const zip = url.pathname.split('/').pop();
+        const connectionString = env.HYPERDRIVE.connectionString;
+        
+        // Query Postgres to see if zip is serviceable
+        const basePrice = await getBasePrice(zip, connectionString);
+        
+        if (basePrice !== null) {
+          return new Response(JSON.stringify({ valid: true, message: 'Valid' }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } else {
+          return new Response(JSON.stringify({ valid: false, message: `Zip code ${zip} is currently outside our service area.` }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      if (request.method === 'GET' && url.pathname.startsWith('/api/location/')) {
+        const zip = url.pathname.split('/').pop();
+        return new Response(JSON.stringify({ zip_code: zip, city: 'Local', state: 'US' }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
