@@ -18,12 +18,6 @@
         'views/templates.xml',
         'data/website_menu.xml',
     ],
-    'assets': {
-        'web.assets_frontend': [
-            'junk_pricing/static/src/css/pricing.css',
-            'junk_pricing/static/src/js/pricing.js',
-        ],
-    },
     'installable': True,
     'application': True,
     'license': 'LGPL-3',
