@@ -1,13 +1,19 @@
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { createClient } from '@libsql/client';
+import pg from 'pg';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Fix __dirname in ES modules
+let _dirname;
+try {
+  _dirname = dirname(fileURLToPath(import.meta.url));
+} catch (e) {
+  // Fallback for environment where import.meta.url is not a file:// (like Cloudflare Workers)
+  _dirname = '';
+}
 
 const DEFAULT_BASE_PRICE = 59;
 const MINIMUM_PRICE = 75;
@@ -19,7 +25,8 @@ const MINIMUM_PRICE = 75;
  * @returns {Array<Object>} Array of catalog items
  */
 function loadCatalog() {
-  const catalogPath = join(__dirname, '..', '..', 'data', 'items-catalog-new.json');
+  if (!_dirname) return []; // In Worker, catalog should be passed in or bundled differently if needed, but for now we'll assume it handles it or we pass it
+  const catalogPath = join(_dirname, '..', '..', 'data', 'items-catalog-new.json');
   if (!existsSync(catalogPath)) return [];
   const raw = readFileSync(catalogPath, 'utf-8');
   return JSON.parse(raw);
@@ -27,7 +34,6 @@ function loadCatalog() {
 
 // Lazy-loaded singletons
 let _catalog = null;
-let _db = null;
 let _serviceableZips = null;
 
 /**
@@ -59,33 +65,36 @@ function lookupItem(itemId, catalog) {
  * @returns {boolean}
  */
 function isServiceableZip(zipCode) {
-  if (!_serviceableZips) {
-    const path = join(__dirname, '..', '..', 'data', 'serviceable_zips.json');
+  if (!_serviceableZips && _dirname) {
+    const path = join(_dirname, '..', '..', 'data', 'serviceable_zips.json');
     if (existsSync(path)) {
       _serviceableZips = new Set(JSON.parse(readFileSync(path, 'utf-8')));
     } else {
       _serviceableZips = new Set();
     }
+  } else if (!_serviceableZips) {
+      _serviceableZips = new Set();
   }
   return _serviceableZips.has(zipCode);
 }
 
-function getDbClient() {
-  if (!_db) {
-    const url = process.env.TURSO_DATABASE_URL || 'libsql://local-guys-junk-removal-revspace.aws-us-east-2.turso.io';
-    const authToken = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Njg2ODg1NzMsImlkIjoiN2U5NzEyMTEtNGI1Yy00M2E0LWIzNWYtOWRkMGQyMmJjOTc4IiwicmlkIjoiNmVhN2VhNjQtNzk2ZC00ZWVlLTkwMjYtMzM0OWY3MzE4NjlkIn0.qxNLSblvC9pZFPcveJmN-rMYwjd1WAOqEeD_NwW4WZP6JdONCii_t3xppNGdQy-OUCPpcCWZG3eXeNk8GBZ0Dw';
-    _db = createClient({ url, authToken });
-  }
-  return _db;
+/**
+ * Get the database connection string.
+ * @param {string} [connectionString] - Optional explicit connection string
+ * @returns {string} The connection string
+ */
+function getConnectionString(connectionString) {
+  return connectionString || process.env.DATABASE_URL || 'postgresql://odoo:odoo19pass@127.0.0.1:5432/revspace_zero1';
 }
 
 /**
  * Get the base price for a zip code asynchronously.
- * Queries Turso DB first, falls back to average SCF price, then to DEFAULT_BASE_PRICE if in serviceable_zips.json.
+ * Queries Postgres DB first, falls back to average SCF price, then to DEFAULT_BASE_PRICE if in serviceable_zips.json.
  * @param {string} zipCode 
+ * @param {string} [connectionString]
  * @returns {Promise<number|null>} The base price, or null if out of service area.
  */
-async function getBasePrice(zipCode) {
+async function getBasePrice(zipCode, connectionString) {
   // Allow a backdoor for testing
   if (zipCode === 'TEST_ZIP_IN_AREA') return DEFAULT_BASE_PRICE;
   if (zipCode === 'TEST_ZIP_OUT_OF_AREA') return null;
@@ -93,37 +102,33 @@ async function getBasePrice(zipCode) {
   const legacyTestZips = new Set(['30144', '30066', '30062', '30064', '30060', '30067', '30068', '30090', '30152']);
   if (legacyTestZips.has(zipCode)) return DEFAULT_BASE_PRICE;
 
-  const db = getDbClient();
-  
-  try {
-    const rs = await db.execute({
-      sql: 'SELECT price_regular FROM pricing WHERE zip_code = ? LIMIT 1',
-      args: [zipCode]
-    });
-    if (rs.rows.length > 0 && rs.rows[0].price_regular != null) {
-      return Number(rs.rows[0].price_regular);
-    }
-  } catch (err) {
-    console.error("DB Error querying exact zip:", err.message);
-  }
-  
-  // If not in DB, check if it's in the broader serviceable zips list
-  if (!isServiceableZip(zipCode)) {
+  // If not in the hardcoded legacy test list, check if it's in the broader serviceable zips list
+  if (_dirname && !isServiceableZip(zipCode)) {
     return null; // Out of service area
   }
 
-  // Smart Fallback: SCF prefix (first 3 digits)
-  const scf = String(zipCode).substring(0, 3);
+  const connString = getConnectionString(connectionString);
+  const client = new pg.Client(connString);
+  
   try {
-    const rs = await db.execute({
-      sql: 'SELECT AVG(price_regular) as avg_price FROM pricing WHERE zip_code LIKE ?',
-      args: [`${scf}%`]
-    });
-    if (rs.rows.length > 0 && rs.rows[0].avg_price != null) {
-      return Number(rs.rows[0].avg_price);
+    await client.connect();
+    
+    // 1. Check exact match
+    const rs = await client.query('SELECT price_regular FROM pricing WHERE zip_code = $1 LIMIT 1', [zipCode]);
+    if (rs.rows.length > 0 && rs.rows[0].price_regular != null) {
+      return Number(rs.rows[0].price_regular);
+    }
+
+    // Smart Fallback: SCF prefix (first 3 digits)
+    const scf = String(zipCode).substring(0, 3);
+    const rsScf = await client.query('SELECT AVG(price_regular) as avg_price FROM pricing WHERE CAST(zip_code AS TEXT) LIKE $1', [`${scf}%`]);
+    if (rsScf.rows.length > 0 && rsScf.rows[0].avg_price != null) {
+      return Number(rsScf.rows[0].avg_price);
     }
   } catch (err) {
-    console.error("DB Error querying SCF:", err.message);
+    console.error("DB Error querying Postgres:", err.message);
+  } finally {
+    await client.end();
   }
   
   return DEFAULT_BASE_PRICE;
@@ -141,6 +146,7 @@ async function getBasePrice(zipCode) {
  * @param {Array<{id: string, quantity?: number, name?: string, unitPrice?: number}>} items
  * @param {string} zipCode - 5-digit zip code
  * @param {Array<Object>} [catalogOverride] - Optional catalog to use instead of default
+ * @param {string} [connectionString] - Optional Postgres connection string (for Cloudflare Hyperdrive)
  * @returns {Promise<{
  *   total: number,
  *   basePrice: number,
@@ -155,9 +161,9 @@ async function getBasePrice(zipCode) {
  *   error?: string
  * }>}
  */
-async function calculateTotalPrice(items, zipCode, catalogOverride) {
+async function calculateTotalPrice(items, zipCode, catalogOverride, connectionString) {
   const catalog = catalogOverride || getCatalog();
-  const basePrice = await getBasePrice(zipCode);
+  const basePrice = await getBasePrice(zipCode, connectionString);
 
   if (basePrice === null) {
     return {
@@ -246,10 +252,6 @@ async function calculateTotalPrice(items, zipCode, catalogOverride) {
 function resetCaches() {
   _catalog = null;
   _serviceableZips = null;
-  if (_db) {
-    _db.close();
-    _db = null;
-  }
 }
 
 /**
@@ -267,7 +269,7 @@ export {
   lookupItem,
   getBasePrice,
   isServiceableZip,
-  resetCaches as resetCatalog, // Exported as resetCatalog for backwards compatibility in tests
+  resetCaches as resetCatalog,
   setCatalog,
   DEFAULT_BASE_PRICE,
   MINIMUM_PRICE,

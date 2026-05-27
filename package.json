@@ -14,7 +14,7 @@
   },
   "private": true,
   "dependencies": {
-    "@libsql/client": "^0.17.3",
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "pg": "^8.21.0"
   }
 }

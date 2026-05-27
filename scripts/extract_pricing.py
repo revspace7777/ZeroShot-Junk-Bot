@@ -5,7 +5,7 @@ import os
 import time
 import argparse
 import sys
-import sqlite3
+import psycopg2
 import threading
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 CATALOG_FILE = os.path.join(DATA_DIR, 'items-catalog-new.json')
 ZIP_MASTER_FILE = os.path.join(DATA_DIR, 'zip-codes-master.json')
-DB_FILE = os.path.join(DATA_DIR, 'goloadup.db')
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://odoo:odoo19pass@127.0.0.1:5432/revspace_zero1")
 
 thread_local = threading.local()
 print_lock = threading.Lock()
@@ -45,7 +45,7 @@ def get_csrf(session):
         return None
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS pricing (
@@ -54,7 +54,7 @@ def init_db():
             total REAL,
             base_price REAL,
             data_json TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (zip_code, item_id)
         )
     ''')
@@ -62,7 +62,7 @@ def init_db():
     conn.close()
 
 def get_processed_zip_items():
-    conn = sqlite3.connect(DB_FILE)
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
     c.execute("SELECT zip_code, item_id FROM pricing")
     rows = c.fetchall()
@@ -73,11 +73,16 @@ def get_processed_zip_items():
 def save_result(zip_code, item_id, pricing_data):
     # Atomic save
     with db_lock:
-        conn = sqlite3.connect(DB_FILE)
+        conn = psycopg2.connect(DATABASE_URL)
         c = conn.cursor()
         c.execute('''
-            INSERT OR REPLACE INTO pricing (zip_code, item_id, total, base_price, data_json)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO pricing (zip_code, item_id, total, base_price, data_json)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (zip_code, item_id) DO UPDATE SET
+                total = EXCLUDED.total,
+                base_price = EXCLUDED.base_price,
+                data_json = EXCLUDED.data_json,
+                updated_at = CURRENT_TIMESTAMP
         ''', (
             zip_code, 
             item_id, 

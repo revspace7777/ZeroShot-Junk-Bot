@@ -1,0 +1,8 @@
+name = "junkbot-worker"
+main = "src/index.js"
+compatibility_date = "2024-05-27"
+compatibility_flags = ["nodejs_compat"]
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "54b581f2651b49f981fc1e5cc84a95ac"
