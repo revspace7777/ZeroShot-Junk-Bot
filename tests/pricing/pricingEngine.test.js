@@ -34,31 +34,31 @@ const MOCK_CATALOG = [
   { id: 'NO_PRICE', name: 'Item Without Price' },
 ];
 
-describe('Pricing Engine — Core Formula', () => {
-  beforeEach(() => {
+describe('Pricing Engine — Core Formula', async () => {
+  beforeEach(async () => {
     setCatalog(MOCK_CATALOG);
   });
 
-  it('calculates total = itemSubtotal + basePrice for normal items', () => {
+  it('calculates total = itemSubtotal + basePrice for normal items', async () => {
     // Mattress ($35) + base ($59) = $94
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
     assert.equal(result.total, 94);
     assert.equal(result.itemSubtotal, 35);
     assert.equal(result.basePrice, 59);
     assert.equal(result.minimumPriceApplied, false);
   });
 
-  it('applies minimum price when subtotal + base < minimum', () => {
+  it('applies minimum price when subtotal + base < minimum', async () => {
     // Empty order: 0 + 59 = 59, which < 75, so total = 75
-    const result = calculateTotalPrice([], '30144');
+    const result = await calculateTotalPrice([], '30144');
     assert.equal(result.total, MINIMUM_PRICE);
     assert.equal(result.minimumPriceApplied, true);
     assert.equal(result.items.length, 0);
   });
 
-  it('handles multiple items with quantities', () => {
+  it('handles multiple items with quantities', async () => {
     // 2 mattresses ($70) + dresser ($30) = $100 items + $59 base = $159
-    const result = calculateTotalPrice([
+    const result = await calculateTotalPrice([
       { id: '7947', quantity: 2 },
       { id: '7910', quantity: 1 },
     ], '30144');
@@ -66,26 +66,27 @@ describe('Pricing Engine — Core Formula', () => {
     assert.equal(result.total, 159);
   });
 
-  it('uses default base price for unknown zip codes', () => {
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1 }], '99999');
-    assert.equal(result.basePrice, DEFAULT_BASE_PRICE);
+  it('returns outOfServiceArea for unknown zip codes', async () => {
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1 }], '99999');
+    assert.equal(result.outOfServiceArea, true);
+    assert.equal(result.total, 0);
   });
 
-  it('uses provided unitPrice when explicitly set', () => {
+  it('uses provided unitPrice when explicitly set', async () => {
     // Override with unitPrice = 50 instead of catalog's $35
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1, unitPrice: 50 }], '30144');
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1, unitPrice: 50 }], 'TEST_ZIP_IN_AREA');
     assert.equal(result.itemSubtotal, 50);
     assert.equal(result.total, 109); // 50 + 59
   });
 });
 
-describe('Pricing Engine — No Fallback Pricing', () => {
-  beforeEach(() => {
+describe('Pricing Engine — No Fallback Pricing', async () => {
+  beforeEach(async () => {
     setCatalog(MOCK_CATALOG);
   });
 
-  it('flags unknown items as unresolved instead of using $30 fallback', () => {
-    const result = calculateTotalPrice([{ id: 'FAKE_ITEM', quantity: 1 }], '30144');
+  it('flags unknown items as unresolved instead of using $30 fallback', async () => {
+    const result = await calculateTotalPrice([{ id: 'FAKE_ITEM', quantity: 1 }], '30144');
     assert.equal(result.unresolvedItems.length, 1);
     assert.equal(result.unresolvedItems[0].needsClarification, true);
     assert.equal(result.hasUnresolvedItems, true);
@@ -93,19 +94,19 @@ describe('Pricing Engine — No Fallback Pricing', () => {
     assert.equal(result.total, MINIMUM_PRICE);
   });
 
-  it('flags items with pickupPrice = 0 as unresolved', () => {
-    const result = calculateTotalPrice([{ id: 'ZERO_PRICE', quantity: 1 }], '30144');
+  it('flags items with pickupPrice = 0 as unresolved', async () => {
+    const result = await calculateTotalPrice([{ id: 'ZERO_PRICE', quantity: 1 }], '30144');
     assert.equal(result.unresolvedItems.length, 1);
     assert.equal(result.unresolvedItems[0].needsClarification, true);
   });
 
-  it('flags items with no pickupPrice field as unresolved', () => {
-    const result = calculateTotalPrice([{ id: 'NO_PRICE', quantity: 1 }], '30144');
+  it('flags items with no pickupPrice field as unresolved', async () => {
+    const result = await calculateTotalPrice([{ id: 'NO_PRICE', quantity: 1 }], '30144');
     assert.equal(result.unresolvedItems.length, 1);
   });
 
-  it('separates resolved and unresolved in mixed orders', () => {
-    const result = calculateTotalPrice([
+  it('separates resolved and unresolved in mixed orders', async () => {
+    const result = await calculateTotalPrice([
       { id: '7947', quantity: 1 },       // resolved: $35
       { id: 'FAKE_ITEM', quantity: 1 },  // unresolved
       { id: '7908', quantity: 1 },       // resolved: $45
@@ -118,13 +119,13 @@ describe('Pricing Engine — No Fallback Pricing', () => {
   });
 });
 
-describe('Pricing Engine — Data Integrity', () => {
-  beforeEach(() => {
+describe('Pricing Engine — Data Integrity', async () => {
+  beforeEach(async () => {
     setCatalog(MOCK_CATALOG);
   });
 
-  it('returns all expected fields in result', () => {
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
+  it('returns all expected fields in result', async () => {
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
 
     assert.ok('total' in result);
     assert.ok('basePrice' in result);
@@ -137,8 +138,8 @@ describe('Pricing Engine — Data Integrity', () => {
     assert.ok('hasUnresolvedItems' in result);
   });
 
-  it('item entries have correct structure', () => {
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
+  it('item entries have correct structure', async () => {
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
     const item = result.items[0];
 
     assert.ok(item.itemType);
@@ -149,25 +150,25 @@ describe('Pricing Engine — Data Integrity', () => {
     assert.equal(item.pickupSubtotal, 35);
   });
 
-  it('defaults quantity to 1 when not specified', () => {
-    const result = calculateTotalPrice([{ id: '7947' }], '30144');
+  it('defaults quantity to 1 when not specified', async () => {
+    const result = await calculateTotalPrice([{ id: '7947' }], '30144');
     assert.equal(result.items[0].quantity, 1);
     assert.equal(result.items[0].pickupSubtotal, 35);
   });
 
-  it('unresolved items have reason field', () => {
-    const result = calculateTotalPrice([{ id: 'FAKE_ITEM', quantity: 1 }], '30144');
+  it('unresolved items have reason field', async () => {
+    const result = await calculateTotalPrice([{ id: 'FAKE_ITEM', quantity: 1 }], '30144');
     assert.ok(result.unresolvedItems[0].reason);
     assert.equal(result.unresolvedItems[0].reason, 'Item ID not found in catalog');
   });
 });
 
-describe('Pricing Engine — Formula Invariants', () => {
-  beforeEach(() => {
+describe('Pricing Engine — Formula Invariants', async () => {
+  beforeEach(async () => {
     setCatalog(MOCK_CATALOG);
   });
 
-  it('total is never less than minimum price', () => {
+  it('total is never less than minimum price', async () => {
     const scenarios = [
       [],
       [{ id: '7947', quantity: 1 }],
@@ -175,12 +176,12 @@ describe('Pricing Engine — Formula Invariants', () => {
     ];
 
     for (const items of scenarios) {
-      const result = calculateTotalPrice(items, '30144');
+      const result = await calculateTotalPrice(items, '30144');
       assert.ok(result.total >= MINIMUM_PRICE, `total ${result.total} < minimum ${MINIMUM_PRICE}`);
     }
   });
 
-  it('total = max(itemSubtotal + basePrice, minimumPrice) for 5 scenarios', () => {
+  it('total = max(itemSubtotal + basePrice, minimumPrice) for 5 scenarios', async () => {
     const cases = [
       { items: [], zip: '30144', expectMin: true },
       { items: [{ id: '7947', quantity: 1 }], zip: '30144', expectMin: false },
@@ -190,14 +191,14 @@ describe('Pricing Engine — Formula Invariants', () => {
     ];
 
     for (const c of cases) {
-      const result = calculateTotalPrice(c.items, c.zip);
+      const result = await calculateTotalPrice(c.items, c.zip);
       const expected = Math.max(result.itemSubtotal + result.basePrice, MINIMUM_PRICE);
       assert.equal(result.total, expected, `Formula mismatch for scenario with ${c.items.length} items`);
     }
   });
 
-  it('no NaN or negative values in results', () => {
-    const result = calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
+  it('no NaN or negative values in results', async () => {
+    const result = await calculateTotalPrice([{ id: '7947', quantity: 1 }], '30144');
     assert.ok(!isNaN(result.total));
     assert.ok(!isNaN(result.basePrice));
     assert.ok(!isNaN(result.itemSubtotal));

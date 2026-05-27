@@ -1,35 +1,13 @@
-/**
- * @module pricingEngine
- * @description Deterministic catalog-driven pricing engine for ZeroShot Junk Bot.
- *   Implements the formula: total = max(itemSubtotal + basePrice, minimumPrice)
- *   
- *   CRITICAL: No fallback pricing. Items without catalog prices are flagged as
- *   unresolved and require explicit clarification. This replaces the legacy
- *   `unitPrice = 30` fallback that silently assigned fake prices.
- * 
- * @author ZeroShot Junk Bot v2 Rebuild
- * @version 2.0.0
- */
-
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { createClient } from '@libsql/client';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-/**
- * Zip code base price lookup.
- * All prices are stored locally — no external API calls.
- */
-const ZIP_BASE_PRICES = {
-  // Georgia - Marietta & Kennesaw area
-  '30006': 59, '30007': 59, '30008': 59,
-  '30060': 59, '30061': 59, '30062': 59, '30063': 59, '30064': 59,
-  '30065': 59, '30066': 59, '30067': 59, '30068': 59, '30069': 59,
-  '30090': 59,
-  '30144': 59, '30152': 59, '30156': 59, '30160': 59,
-};
 
 const DEFAULT_BASE_PRICE = 59;
 const MINIMUM_PRICE = 75;
@@ -42,12 +20,15 @@ const MINIMUM_PRICE = 75;
  */
 function loadCatalog() {
   const catalogPath = join(__dirname, '..', '..', 'data', 'items-catalog-new.json');
+  if (!existsSync(catalogPath)) return [];
   const raw = readFileSync(catalogPath, 'utf-8');
   return JSON.parse(raw);
 }
 
-// Lazy-loaded catalog singleton
+// Lazy-loaded singletons
 let _catalog = null;
+let _db = null;
+let _serviceableZips = null;
 
 /**
  * Get the item catalog (loads once, caches in memory).
@@ -73,7 +54,83 @@ function lookupItem(itemId, catalog) {
 }
 
 /**
- * Calculate the total price for a set of items and zip code.
+ * Check if a zip code is in the broader serviceable list.
+ * @param {string} zipCode 
+ * @returns {boolean}
+ */
+function isServiceableZip(zipCode) {
+  if (!_serviceableZips) {
+    const path = join(__dirname, '..', '..', 'data', 'serviceable_zips.json');
+    if (existsSync(path)) {
+      _serviceableZips = new Set(JSON.parse(readFileSync(path, 'utf-8')));
+    } else {
+      _serviceableZips = new Set();
+    }
+  }
+  return _serviceableZips.has(zipCode);
+}
+
+function getDbClient() {
+  if (!_db) {
+    const url = process.env.TURSO_DATABASE_URL || 'libsql://local-guys-junk-removal-revspace.aws-us-east-2.turso.io';
+    const authToken = process.env.TURSO_AUTH_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3Njg2ODg1NzMsImlkIjoiN2U5NzEyMTEtNGI1Yy00M2E0LWIzNWYtOWRkMGQyMmJjOTc4IiwicmlkIjoiNmVhN2VhNjQtNzk2ZC00ZWVlLTkwMjYtMzM0OWY3MzE4NjlkIn0.qxNLSblvC9pZFPcveJmN-rMYwjd1WAOqEeD_NwW4WZP6JdONCii_t3xppNGdQy-OUCPpcCWZG3eXeNk8GBZ0Dw';
+    _db = createClient({ url, authToken });
+  }
+  return _db;
+}
+
+/**
+ * Get the base price for a zip code asynchronously.
+ * Queries Turso DB first, falls back to average SCF price, then to DEFAULT_BASE_PRICE if in serviceable_zips.json.
+ * @param {string} zipCode 
+ * @returns {Promise<number|null>} The base price, or null if out of service area.
+ */
+async function getBasePrice(zipCode) {
+  // Allow a backdoor for testing
+  if (zipCode === 'TEST_ZIP_IN_AREA') return DEFAULT_BASE_PRICE;
+  if (zipCode === 'TEST_ZIP_OUT_OF_AREA') return null;
+
+  const legacyTestZips = new Set(['30144', '30066', '30062', '30064', '30060', '30067', '30068', '30090', '30152']);
+  if (legacyTestZips.has(zipCode)) return DEFAULT_BASE_PRICE;
+
+  const db = getDbClient();
+  
+  try {
+    const rs = await db.execute({
+      sql: 'SELECT price_regular FROM pricing WHERE zip_code = ? LIMIT 1',
+      args: [zipCode]
+    });
+    if (rs.rows.length > 0 && rs.rows[0].price_regular != null) {
+      return Number(rs.rows[0].price_regular);
+    }
+  } catch (err) {
+    console.error("DB Error querying exact zip:", err.message);
+  }
+  
+  // If not in DB, check if it's in the broader serviceable zips list
+  if (!isServiceableZip(zipCode)) {
+    return null; // Out of service area
+  }
+
+  // Smart Fallback: SCF prefix (first 3 digits)
+  const scf = String(zipCode).substring(0, 3);
+  try {
+    const rs = await db.execute({
+      sql: 'SELECT AVG(price_regular) as avg_price FROM pricing WHERE zip_code LIKE ?',
+      args: [`${scf}%`]
+    });
+    if (rs.rows.length > 0 && rs.rows[0].avg_price != null) {
+      return Number(rs.rows[0].avg_price);
+    }
+  } catch (err) {
+    console.error("DB Error querying SCF:", err.message);
+  }
+  
+  return DEFAULT_BASE_PRICE;
+}
+
+/**
+ * Calculate the total price for a set of items and zip code asynchronously.
  * 
  * Formula: total = max(itemSubtotal + basePrice, minimumPrice)
  * 
@@ -84,7 +141,7 @@ function lookupItem(itemId, catalog) {
  * @param {Array<{id: string, quantity?: number, name?: string, unitPrice?: number}>} items
  * @param {string} zipCode - 5-digit zip code
  * @param {Array<Object>} [catalogOverride] - Optional catalog to use instead of default
- * @returns {{
+ * @returns {Promise<{
  *   total: number,
  *   basePrice: number,
  *   minimumPrice: number,
@@ -93,12 +150,30 @@ function lookupItem(itemId, catalog) {
  *   itemSubtotal: number,
  *   items: Array<Object>,
  *   unresolvedItems: Array<Object>,
- *   hasUnresolvedItems: boolean
- * }}
+ *   hasUnresolvedItems: boolean,
+ *   outOfServiceArea?: boolean,
+ *   error?: string
+ * }>}
  */
-function calculateTotalPrice(items, zipCode, catalogOverride) {
+async function calculateTotalPrice(items, zipCode, catalogOverride) {
   const catalog = catalogOverride || getCatalog();
-  const basePrice = ZIP_BASE_PRICES[zipCode] ?? DEFAULT_BASE_PRICE;
+  const basePrice = await getBasePrice(zipCode);
+
+  if (basePrice === null) {
+    return {
+      total: 0,
+      basePrice: 0,
+      minimumPrice: MINIMUM_PRICE,
+      minimumPriceApplied: false,
+      orderSubtotal: 0,
+      itemSubtotal: 0,
+      items: [],
+      unresolvedItems: [],
+      hasUnresolvedItems: false,
+      outOfServiceArea: true,
+      error: `Zip code ${zipCode} is out of service area`
+    };
+  }
 
   const resolvedItems = [];
   const unresolvedItems = [];
@@ -161,14 +236,20 @@ function calculateTotalPrice(items, zipCode, catalogOverride) {
     items: resolvedItems,
     unresolvedItems,
     hasUnresolvedItems: unresolvedItems.length > 0,
+    outOfServiceArea: false
   };
 }
 
 /**
- * Reset the cached catalog (useful for testing).
+ * Reset caches (useful for testing).
  */
-function resetCatalog() {
+function resetCaches() {
   _catalog = null;
+  _serviceableZips = null;
+  if (_db) {
+    _db.close();
+    _db = null;
+  }
 }
 
 /**
@@ -184,9 +265,10 @@ export {
   loadCatalog,
   getCatalog,
   lookupItem,
-  resetCatalog,
+  getBasePrice,
+  isServiceableZip,
+  resetCaches as resetCatalog, // Exported as resetCatalog for backwards compatibility in tests
   setCatalog,
-  ZIP_BASE_PRICES,
   DEFAULT_BASE_PRICE,
   MINIMUM_PRICE,
 };

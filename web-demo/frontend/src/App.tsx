@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, MapPin, ShoppingCart, Trash2, ArrowUpDown, CheckCircle2, Sun, Moon, Info, ArrowLeft, X, CreditCard } from 'lucide-react';
+import { MapPin, ShoppingCart, Info, ArrowLeft, Sun, Moon, Send, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -12,127 +12,70 @@ interface Location {
 }
 
 interface Item {
-  item_id: string;
-  item_name: string;
-  base_price: number;
-  total_price: number;
-  addition: number;
-  multiplier: number;
+  itemType: { id: string; name: string };
+  pickupUnitPrice: number;
+  quantity: number;
+  pickupSubtotal: number;
 }
 
-const Tooltip = ({ text, children }: { text: string, children: React.ReactNode }) => (
+interface ClarificationOption {
+  id: string;
+  name: string;
+  pickupPrice: number;
+}
+
+interface UnresolvedItem {
+  id: string;
+  name: string;
+  quantity: number;
+  needsClarification: boolean;
+  reason: string;
+  options?: ClarificationOption[];
+}
+
+interface QuoteResponse {
+  total: number;
+  basePrice: number;
+  itemSubtotal: number;
+  minimumPriceApplied: boolean;
+  outOfServiceArea: boolean;
+  items: Item[];
+  unresolvedItems: UnresolvedItem[];
+  error?: string;
+}
+
+const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => (
   <div className="tooltip-container">
     {children}
     <div className="tooltip-text">{text}</div>
   </div>
 );
 
-const CheckoutModal = ({ isOpen, onClose, total, cart, baseFee }: { isOpen: boolean, onClose: () => void, total: number, cart: Item[], baseFee: number }) => (
-  <AnimatePresence>
-    {isOpen && (
-      <motion.div
-        className="modal-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          className="modal-content"
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button className="modal-close" onClick={onClose}><X size={24} /></button>
-
-          <div className="summary-section">
-            <h3 className="summary-header">Area Service Fees</h3>
-            <div className="summary-row">
-              <span>This includes transportation and service loading costs.</span>
-              <span style={{ fontWeight: 600 }}>${baseFee.toFixed(2)}</span>
-            </div>
-          </div>
-
-          <div className="summary-section">
-            <h3 className="summary-header">Items for Removal</h3>
-            {cart.map(item => (
-              <div key={item.item_id} className="summary-row">
-                <span>{item.item_name}</span>
-                <div style={{ display: 'flex', gap: '2rem' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>1x ${item.addition.toFixed(2)}</span>
-                  <span style={{ fontWeight: 600, minWidth: '60px', textAlign: 'right' }}>${item.addition.toFixed(2)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="summary-section">
-            <h3 className="summary-header">Order Price Summary</h3>
-            <div className="summary-row">
-              <span>Order subtotal</span>
-              <span style={{ fontWeight: 600 }}>${total.toFixed(2)}</span>
-            </div>
-            <div className="summary-row">
-              <span>Estimated tax to be collected</span>
-              <span>$0.00</span>
-            </div>
-          </div>
-
-          <div className="guaranteed-box">
-            <div className="guaranteed-title">Guaranteed Price*</div>
-            <div className="guaranteed-price">${total.toFixed(2)}</div>
-            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              There's a minimum price for any order. That's why your total price is greater than your base price.
-            </p>
-          </div>
-
-          <div className="modal-footer-text">
-            *Your Guaranteed Price is based on the items and site details you've selected.<br />
-            *Subject to state and local taxes where applicable. Taxes calculated upon entry of your address.<br />
-            *Your Order Qualifies for <strong>The Local Guys Service Day Guarantee</strong> based on details you've currently selected.
-          </div>
-
-          <button className="glow-btn" style={{ width: '100%', padding: '1.2rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            <CreditCard size={20} /> Complete Secure Booking
-          </button>
-        </motion.div>
-      </motion.div>
-    )}
-  </AnimatePresence>
-);
-
 export default function App() {
   const [zip, setZip] = useState('');
   const [location, setLocation] = useState<Location | null>(null);
   const [isValidated, setIsValidated] = useState(false);
-  const [items, setItems] = useState<Item[]>([]);
-  const [cart, setCart] = useState<Item[]>([]);
-  const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'item_name' | 'base_price' | 'total_price'>('item_name');
-  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [inputText, setInputText] = useState('');
+  const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState('dark');
-  const [showCheckout, setShowCheckout] = useState(false);
 
-  // Sync theme to root element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   const handleReset = () => {
     setIsValidated(false);
     setZip('');
     setLocation(null);
-    setCart([]);
-    setItems([]);
+    setQuote(null);
+    setInputText('');
   };
 
-  // Validate Zip Code
   const handleZipSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (zip.length !== 5) return;
@@ -140,60 +83,50 @@ export default function App() {
     try {
       const resp = await axios.get(`${API_BASE}/validate-zip/${zip}`);
       if (resp.data.valid) {
-        // Fetch location details
         const locResp = await axios.get(`${API_BASE}/location/${zip}`);
         setLocation(locResp.data);
         setIsValidated(true);
-        fetchItems();
       } else {
         alert(resp.data.message);
       }
     } catch (err) {
       console.error(err);
-      alert("Failed to connect to backend. Please ensure the FastAPI server is running.");
+      alert("Failed to validate zip code.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch Items from Database
-  const fetchItems = async () => {
-    if (!zip) return;
+  const submitQuote = async (textToSubmit: string = inputText) => {
+    if (!textToSubmit.trim()) return;
     setLoading(true);
     try {
-      const resp = await axios.get(`${API_BASE}/items/${zip}`, {
-        params: { search, sort_by: sortBy, order }
+      const resp = await axios.post(`${API_BASE}/quote`, {
+        text: textToSubmit,
+        zipCode: zip
       });
-      setItems(resp.data);
-    } catch (err) {
+      setQuote(resp.data);
+    } catch (err: any) {
       console.error(err);
+      alert(err.response?.data?.error || "Error generating quote.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isValidated) {
-      fetchItems();
-    }
-  }, [search, sortBy, order, isValidated]);
-
-  const toggleCart = (item: Item) => {
-    const exists = cart.find(i => i.item_id === item.item_id);
-    if (exists) {
-      setCart(cart.filter(i => i.item_id !== item.item_id));
+  const handleDisambiguationSelection = (ambiguousName: string, selectedOptionName: string) => {
+    // Replace the ambiguous term in the original input text with the selected precise catalog term
+    const regex = new RegExp(`\\b${ambiguousName}\\b`, 'gi');
+    let newText = inputText;
+    if (regex.test(inputText)) {
+      newText = inputText.replace(regex, selectedOptionName);
     } else {
-      setCart([...cart, item]);
+      // Fallback if regex matching fails: just append it and remove the old term loosely
+      newText = inputText + ` (specifically: ${selectedOptionName})`;
     }
+    setInputText(newText);
+    submitQuote(newText);
   };
-
-  const baseFee = useMemo(() => cart.length > 0 ? cart[0].base_price : 0, [cart]);
-  const totalAddons = useMemo(() => cart.reduce((acc, curr) => acc + curr.addition, 0), [cart]);
-
-  const totalPrice = useMemo(() => {
-    if (cart.length === 0) return 0;
-    return baseFee + totalAddons;
-  }, [baseFee, totalAddons]);
 
   return (
     <div className="container">
@@ -202,11 +135,7 @@ export default function App() {
       </button>
 
       <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="neon-text"
-        >
+        <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="neon-text">
           Local Guys Junk Removal
         </motion.h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>
@@ -239,66 +168,87 @@ export default function App() {
       ) : (
         <div className="layout-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem' }}>
           <div>
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={20} />
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', alignItems: 'center' }}>
+              <button
+                onClick={handleReset}
+                className="glass"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 15px', color: 'var(--text-muted)', cursor: 'pointer', border: '1px solid var(--border-color)' }}
+              >
+                <ArrowLeft size={16} /> <span style={{ fontSize: '0.85rem' }}>Change Zip</span>
+              </button>
+              <div style={{ flex: 1 }}>
+                <div style={{ position: 'relative' }}>
                   <input
                     type="text"
-                    placeholder="Search items to remove..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{ width: '100%', paddingLeft: '40px' }}
+                    placeholder="Tell us what you need removed... (e.g. 'an old couch and a fridge')"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitQuote()}
+                    style={{ width: '100%', paddingRight: '120px', fontSize: '1.1rem', padding: '15px 20px' }}
                   />
+                  <button
+                    onClick={() => submitQuote()}
+                    disabled={loading || !inputText.trim()}
+                    className="glow-btn"
+                    style={{ position: 'absolute', right: '5px', top: '5px', bottom: '5px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    <Send size={16} /> {loading ? '...' : 'Quote'}
+                  </button>
                 </div>
-                <button
-                  onClick={handleReset}
-                  className="glass"
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 15px', color: 'var(--text-muted)', cursor: 'pointer', border: '1px solid var(--border-color)' }}
-                >
-                  <ArrowLeft size={16} /> <span style={{ fontSize: '0.85rem' }}>Change Zip</span>
-                </button>
               </div>
-              <div
-                className="glass"
-                style={{ display: 'flex', alignItems: 'center', padding: '0 12px', cursor: 'pointer', gap: '8px' }}
-                onClick={() => setOrder(order === 'asc' ? 'desc' : 'asc')}
-              >
-                <ArrowUpDown size={18} />
-                <span style={{ fontSize: '0.9rem' }}>{order.toUpperCase()}</span>
-              </div>
-              <select
-                className="glass"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                style={{ backgroundColor: '#1a1a1a', color: 'white', padding: '0 12px', borderRadius: '8px' }}
-              >
-                <option value="item_name">Sort by Name</option>
-                <option value="base_price">Sort by Base Price</option>
-                <option value="total_price">Sort by Total Price</option>
-              </select>
             </div>
 
-            <div className="item-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', maxHeight: '600px', overflowY: 'auto', paddingRight: '1rem' }}>
-              {items.map(item => (
-                <div
-                  key={item.item_id}
-                  className={`item-card ${cart.find(i => i.item_id === item.item_id) ? 'selected' : ''}`}
-                  onClick={() => toggleCart(item)}
-                >
-                  <h4 style={{ marginBottom: '8px' }}>{item.item_name}</h4>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ color: 'var(--primary-glow)', fontWeight: 700 }}>+${item.addition.toFixed(2)}</span>
-                      {item.multiplier > 1 && (
-                        <span className="multiplier-tag" style={{ marginLeft: 0, marginTop: '4px' }}>x{item.multiplier.toFixed(2)} applied</span>
-                      )}
-                    </div>
-                    {cart.find(i => i.item_id === item.item_id) && <CheckCircle2 size={16} color="var(--primary-glow)" />}
+            {quote?.outOfServiceArea && (
+              <div className="glass" style={{ padding: '2rem', textAlign: 'center', border: '1px solid #ff4444' }}>
+                <AlertTriangle size={48} color="#ff4444" style={{ marginBottom: '1rem' }} />
+                <h3>Out of Service Area</h3>
+                <p>We're sorry, but zip code {zip} is currently outside our service area.</p>
+              </div>
+            )}
+
+            {quote && quote.unresolvedItems && quote.unresolvedItems.length > 0 && !quote.outOfServiceArea && (
+              <div style={{ marginBottom: '2rem' }}>
+                <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffaa00' }}>
+                  <AlertTriangle size={20} /> Clarification Needed
+                </h3>
+                {quote.unresolvedItems.map((item, idx) => (
+                  <div key={idx} className="glass" style={{ padding: '1.5rem', marginBottom: '1rem', borderLeft: '4px solid #ffaa00' }}>
+                    <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>
+                      We're not entirely sure what you meant by <strong style={{ color: 'white' }}>"{item.name}"</strong>.
+                    </p>
+                    {item.needsClarification && item.options && item.options.length > 0 ? (
+                      <div>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>Did you mean one of these?</p>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          {item.options.filter(o => o !== null).map((opt) => (
+                            <button
+                              key={opt.id}
+                              onClick={() => handleDisambiguationSelection(item.name, opt.name)}
+                              style={{
+                                padding: '10px 15px',
+                                background: 'rgba(255,255,255,0.05)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: '4px'
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, color: 'white' }}>{opt.name}</span>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--primary-glow)' }}>+${opt.pickupPrice}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ color: 'var(--text-muted)' }}>Item not recognized in catalog.</p>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <aside>
@@ -310,30 +260,28 @@ export default function App() {
 
               <div style={{ minHeight: '150px', marginBottom: '1.5rem' }}>
                 <AnimatePresence>
-                  {cart.length === 0 ? (
+                  {!quote || quote.items.length === 0 ? (
                     <motion.p
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '2rem' }}
                     >
-                      No items selected
+                      {quote && quote.outOfServiceArea ? 'Cannot generate quote.' : 'Type your items to get a quote'}
                     </motion.p>
                   ) : (
-                    cart.map(item => (
+                    quote.items.map((item, idx) => (
                       <motion.div
-                        key={item.item_id}
+                         key={idx}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', fontSize: '0.9rem' }}
                       >
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{item.item_name}</span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                          {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.itemType.name}
+                        </span>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600 }}>${item.addition.toFixed(2)}</span>
-                          <Trash2 size={14} className="text-muted" style={{ cursor: 'pointer' }} onClick={(e) => {
-                            e.stopPropagation();
-                            toggleCart(item);
-                          }} />
+                          <span style={{ fontWeight: 600 }}>${item.pickupSubtotal.toFixed(2)}</span>
                         </div>
                       </motion.div>
                     ))
@@ -342,7 +290,7 @@ export default function App() {
               </div>
 
               <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-                {cart.length > 0 && (
+                {quote && !quote.outOfServiceArea && quote.items.length > 0 && (
                   <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
                     <div className="price-row">
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -351,20 +299,28 @@ export default function App() {
                           <Info size={14} style={{ opacity: 0.5 }} />
                         </Tooltip>
                       </span>
-                      <span>${baseFee.toFixed(2)}</span>
+                      <span>${quote.basePrice.toFixed(2)}</span>
                     </div>
                     <div className="price-row">
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        Itemized Handling & Recycling
+                        Itemized Handling
                         <Tooltip text="Additional fees required for the specific size, weight, and recycling requirements of each item added to your order.">
                           <Info size={14} style={{ opacity: 0.5 }} />
                         </Tooltip>
                       </span>
-                      <span>+${totalAddons.toFixed(2)}</span>
+                      <span>+${quote.itemSubtotal.toFixed(2)}</span>
                     </div>
+                    {quote.minimumPriceApplied && (
+                      <div className="price-row">
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ffaa00' }}>
+                          Minimum Price Adjustment
+                        </span>
+                        <span style={{ color: '#ffaa00' }}>+${(quote.total - (quote.basePrice + quote.itemSubtotal)).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="price-row total">
                       <span>Total Price</span>
-                      <span className="neon-text">${totalPrice.toFixed(2)}</span>
+                      <span className="neon-text">${quote.total.toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -372,10 +328,6 @@ export default function App() {
                 <p className="disclaimer" style={{ marginBottom: '1rem' }}>
                   * All prices are guaranteed based on the items selected. Taxes and local disposal surcharges are included.
                 </p>
-
-                <button className="glow-btn" style={{ width: '100%' }} disabled={cart.length === 0} onClick={() => setShowCheckout(true)}>
-                  {cart.length === 0 ? 'Select Items to Start' : 'Secure Checkout'}
-                </button>
 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
                   {location && (
@@ -401,27 +353,6 @@ export default function App() {
         </div>
         <p>© {new Date().getFullYear()} Local Guys Junk Removal. All rights reserved.</p>
       </footer>
-
-      {/* Sticky Mobile Summary Bar */}
-      {cart.length > 0 && (
-        <div className="sticky-mobile-summary" style={{ display: 'none' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cart.length} item{cart.length > 1 ? 's' : ''}</span>
-            <span style={{ fontWeight: 800, color: 'var(--primary-glow)', fontSize: '1.2rem' }}>${totalPrice.toFixed(2)}</span>
-          </div>
-          <button className="glow-btn" style={{ padding: '10px 20px', fontSize: '0.8rem' }} onClick={() => setShowCheckout(true)}>
-            Checkout
-          </button>
-        </div>
-      )}
-
-      <CheckoutModal
-        isOpen={showCheckout}
-        onClose={() => setShowCheckout(false)}
-        total={totalPrice}
-        cart={cart}
-        baseFee={baseFee}
-      />
     </div>
   );
 }
