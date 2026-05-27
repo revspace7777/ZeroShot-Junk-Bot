@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { MapPin, ShoppingCart, Info, ArrowLeft, Sun, Moon, Send, AlertTriangle } from 'lucide-react';
+import { MapPin, ShoppingCart, Info, ArrowLeft, Sun, Moon, Send, AlertTriangle, Camera, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -42,6 +42,7 @@ interface QuoteResponse {
   items: Item[];
   unresolvedItems: UnresolvedItem[];
   error?: string;
+  visionText?: string;
 }
 
 const Tooltip = ({ text, children }: { text: string; children: React.ReactNode }) => (
@@ -59,6 +60,9 @@ export default function App() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState('dark');
+  
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -74,6 +78,7 @@ export default function App() {
     setLocation(null);
     setQuote(null);
     setInputText('');
+    setSelectedImage(null);
   };
 
   const handleZipSubmit = async (e: React.FormEvent) => {
@@ -111,6 +116,59 @@ export default function App() {
       alert(err.response?.data?.error || "Error generating quote.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        setSelectedImage(dataUrl);
+        submitVisionQuote(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const submitVisionQuote = async (base64Image: string) => {
+    setLoading(true);
+    setIsAnalyzingImage(true);
+    try {
+      const resp = await axios.post(`${API_BASE}/vision`, {
+        imageBase64: base64Image,
+        zipCode: zip
+      });
+      setQuote(resp.data);
+      if (resp.data.visionText) {
+        setInputText(resp.data.visionText);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.error || "Error analyzing image.");
+    } finally {
+      setLoading(false);
+      setIsAnalyzingImage(false);
     }
   };
 
@@ -178,22 +236,39 @@ export default function App() {
               </button>
               <div style={{ flex: 1 }}>
                 <div style={{ position: 'relative' }}>
+                  {selectedImage && (
+                    <div style={{ position: 'absolute', left: '10px', top: '10px', bottom: '10px', width: '40px', borderRadius: '4px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <img src={selectedImage} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button 
+                        onClick={() => { setSelectedImage(null); setQuote(null); setInputText(''); }}
+                        style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.5)', color: 'white', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="text"
-                    placeholder="Tell us what you need removed... (e.g. 'an old couch and a fridge')"
+                    placeholder={isAnalyzingImage ? "Analyzing image for bulky items..." : "Tell us what you need removed... (e.g. 'an old couch and a fridge')"}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && submitQuote()}
-                    style={{ width: '100%', paddingRight: '120px', fontSize: '1.1rem', padding: '15px 20px' }}
+                    disabled={isAnalyzingImage}
+                    style={{ width: '100%', paddingLeft: selectedImage ? '60px' : '20px', paddingRight: '160px', fontSize: '1.1rem', paddingTop: '15px', paddingBottom: '15px' }}
                   />
-                  <button
-                    onClick={() => submitQuote()}
-                    disabled={loading || !inputText.trim()}
-                    className="glow-btn"
-                    style={{ position: 'absolute', right: '5px', top: '5px', bottom: '5px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    <Send size={16} /> {loading ? '...' : 'Quote'}
-                  </button>
+                  <div style={{ position: 'absolute', right: '5px', top: '5px', bottom: '5px', display: 'flex', gap: '5px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '0 15px', background: 'rgba(255,255,255,0.1)', borderRadius: '8px', transition: 'background 0.2s' }}>
+                      <Camera size={20} />
+                      <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isAnalyzingImage} style={{ display: 'none' }} />
+                    </label>
+                    <button
+                      onClick={() => submitQuote()}
+                      disabled={loading || (!inputText.trim() && !selectedImage)}
+                      className="glow-btn"
+                      style={{ padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                    >
+                      <Send size={16} /> {loading && !isAnalyzingImage ? '...' : 'Quote'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

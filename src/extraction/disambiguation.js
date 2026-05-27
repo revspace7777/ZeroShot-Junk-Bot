@@ -17,13 +17,14 @@ const PRICE_VARIANCE_THRESHOLD = 15; // Max price difference allowed between com
 /**
  * Disambiguate a single extracted input part.
  * @param {Object} extraction - { input: string, matches: Array<{item, score}> }
- * @returns {Object} - The resolved item or an unresolved flag
+ * @param {string} [connectionString]
+ * @returns {Promise<Object>} - The resolved item or an unresolved flag
  */
-function resolveExtraction(extraction) {
+async function resolveExtraction(extraction, connectionString) {
   const { input, matches } = extraction;
 
   if (matches.length === 0 || matches[0].score < CONFIDENCE_THRESHOLD) {
-    logUnmappedAlias(input, 'No confident match found');
+    await logUnmappedAlias(input, 'No confident match found', connectionString);
     return {
       input,
       resolved: false,
@@ -72,16 +73,17 @@ function resolveExtraction(extraction) {
 /**
  * Process a full user request into an array of parsed items ready for pricing.
  * @param {string} text 
- * @returns {{ resolvedItems: Array<Object>, ambiguousItems: Array<Object> }}
+ * @param {string} [connectionString]
+ * @returns {Promise<{ resolvedItems: Array<Object>, ambiguousItems: Array<Object> }>}
  */
-function processRequest(text) {
+async function processRequest(text, connectionString) {
   const extractions = extractFromRequest(text);
   
   const resolvedItems = [];
   const ambiguousItems = [];
 
   for (const ext of extractions) {
-    const resolution = resolveExtraction(ext);
+    const resolution = await resolveExtraction(ext, connectionString);
     if (resolution.resolved) {
       resolvedItems.push({
         id: resolution.item.id,

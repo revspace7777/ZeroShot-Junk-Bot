@@ -94,7 +94,7 @@ async function runScenarios() {
 
     // Run NLP extraction if no hardcoded items exist
     if (scenario.inputText && (!scenario.items || scenario.items.length === 0)) {
-      const { resolvedItems, ambiguousItems } = processRequest(scenario.inputText);
+      const { resolvedItems, ambiguousItems } = await processRequest(scenario.inputText);
       itemsToPrice = resolvedItems.map(i => ({
         id: i.id,
         name: i.name,

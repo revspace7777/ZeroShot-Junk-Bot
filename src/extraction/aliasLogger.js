@@ -4,43 +4,59 @@
  *   This data is used to continuously improve the catalog's aliases and NLP rules.
  */
 
-import fs from 'node:fs';
-import path from 'node:path';
-import url from 'node:url';
+import pg from 'pg';
 
-let _logFile = null;
+let _tableCreated = false;
 
-try {
-  const __filename = url.fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  _logFile = path.join(__dirname, '..', '..', 'data', 'unmapped_aliases.jsonl');
-} catch (e) {
-  // Not in a standard Node.js file:// environment (e.g., Cloudflare Workers)
+/**
+ * Ensures the unmapped_aliases table exists.
+ * @param {pg.Client} client 
+ */
+async function ensureTableExists(client) {
+  if (_tableCreated) return;
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS unmapped_aliases (
+      id SERIAL PRIMARY KEY,
+      input TEXT NOT NULL,
+      reason TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  _tableCreated = true;
 }
 
 /**
  * Logs a raw input string that failed to map to a catalog item.
  * @param {string} input - The raw natural language input.
  * @param {string} reason - The reason it failed (e.g., 'No confident match found').
+ * @param {string} [connectionString] - Optional DB connection string.
  */
-function logUnmappedAlias(input, reason) {
+async function logUnmappedAlias(input, reason, connectionString) {
   if (!input || input.trim() === '') return;
 
-  const entry = {
-    timestamp: new Date().toISOString(),
-    input: input.trim(),
-    reason: reason
-  };
+  const connStr = connectionString || process.env.DATABASE_URL;
+  
+  if (!connStr) {
+    // Graceful fallback if no DB connection string is available
+    console.warn('UNMAPPED_ALIAS (No DB connection):', JSON.stringify({ input, reason }));
+    return;
+  }
 
-  if (_logFile && fs && fs.appendFileSync) {
+  const client = new pg.Client(connStr);
+  
+  try {
+    await client.connect();
+    await ensureTableExists(client);
+    await client.query(
+      'INSERT INTO unmapped_aliases (input, reason, created_at) VALUES ($1, $2, NOW())',
+      [input.trim(), reason]
+    );
+  } catch (err) {
+    console.error('Failed to write to unmapped_aliases in Postgres:', err.message);
+  } finally {
     try {
-      fs.appendFileSync(_logFile, JSON.stringify(entry) + '\n');
-    } catch (err) {
-      console.error('Failed to write to unmapped_aliases.jsonl:', err);
-    }
-  } else {
-    // In Cloudflare Workers, we log to stdout (which is captured by Cloudflare Logs)
-    console.warn('UNMAPPED_ALIAS:', JSON.stringify(entry));
+      await client.end();
+    } catch(e) {}
   }
 }
 
