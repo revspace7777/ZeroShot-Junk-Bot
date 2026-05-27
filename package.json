@@ -1,0 +1,16 @@
+{
+  "name": "zeroshot-junk-bot",
+  "version": "2.0.0",
+  "description": "Deterministic catalog-driven junk removal pricing with operator calibration",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/pricing/pricingEngine.test.js",
+    "scenarios": "node src/calibration/scenarioRunner.js",
+    "review": "node src/calibration/operatorReview.js",
+    "calibrate": "node src/calibration/calibrationEngine.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}

@@ -1,0 +1,12 @@
+{"quoteId":"770c4a89-53ed-4440-acb7-b13e8f78e679","reviewedAt":"2026-05-27T05:19:18.555Z","accepted":true,"quotedPrice":94,"expectedPrice":94,"priceDelta":0,"notes":"Fair price","operatorId":"operator-1"}
+{"quoteId":"ea3340c9-95c5-457a-be6f-3b009c650d4f","reviewedAt":"2026-05-27T05:19:18.557Z","accepted":true,"quotedPrice":89,"expectedPrice":89,"priceDelta":0,"notes":"","operatorId":"operator-1"}
+{"quoteId":"daec02d9-8e7b-47c0-9dd7-60ad1c36b6f4","reviewedAt":"2026-05-27T05:19:18.557Z","accepted":false,"quotedPrice":119,"expectedPrice":130,"priceDelta":11,"notes":"Fridge removal is harder, need more","operatorId":"operator-1"}
+{"quoteId":"a0cec6de-bab3-4436-8fe8-18c1a840808d","reviewedAt":"2026-05-27T05:19:18.557Z","accepted":true,"quotedPrice":89,"expectedPrice":89,"priceDelta":0,"notes":"","operatorId":"operator-1"}
+{"quoteId":"f66dc8c3-2963-45f0-befa-373407a269bb","reviewedAt":"2026-05-27T05:19:18.557Z","accepted":true,"quotedPrice":89,"expectedPrice":89,"priceDelta":0,"notes":"","operatorId":"operator-1"}
+{"quoteId":"ba3626d7-f85d-4ae1-874d-555c323979dd","reviewedAt":"2026-05-27T05:19:18.557Z","accepted":false,"quotedPrice":119,"expectedPrice":135,"priceDelta":16,"notes":"Two items means more labor","operatorId":"operator-1"}
+{"quoteId":"d029f264-be45-42be-bf65-ea1a472b45fc","reviewedAt":"2026-05-27T05:19:18.558Z","accepted":true,"quotedPrice":119,"expectedPrice":119,"priceDelta":0,"notes":"Good price for the pair","operatorId":"operator-1"}
+{"quoteId":"706b40c9-d608-4dc8-a3eb-1f18fa414170","reviewedAt":"2026-05-27T05:19:18.558Z","accepted":true,"quotedPrice":149,"expectedPrice":149,"priceDelta":0,"notes":"","operatorId":"operator-1"}
+{"quoteId":"66e7359c-cc5b-4fb8-b041-fd357414986c","reviewedAt":"2026-05-27T05:19:18.558Z","accepted":false,"quotedPrice":239,"expectedPrice":260,"priceDelta":21,"notes":"Should be higher with recliner","operatorId":"operator-1"}
+{"quoteId":"150f8a74-ed52-4e7d-abec-829d43676ee6","reviewedAt":"2026-05-27T05:19:18.558Z","accepted":true,"quotedPrice":559,"expectedPrice":559,"priceDelta":0,"notes":"Standard garage price","operatorId":"operator-1"}
+{"quoteId":"640ee2cc-15d9-401e-bb99-9e8105316b00","reviewedAt":"2026-05-27T05:19:18.558Z","accepted":false,"quotedPrice":199,"expectedPrice":220,"priceDelta":21,"notes":"Heavy appliances need premium","operatorId":"operator-1"}
+{"quoteId":"9461edab-a586-4dc4-92f4-70821254c66d","reviewedAt":"2026-05-27T05:19:18.559Z","accepted":true,"quotedPrice":329,"expectedPrice":329,"priceDelta":0,"notes":"Reasonable for volume","operatorId":"operator-1"}
